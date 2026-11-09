@@ -3,6 +3,8 @@ import { getUser } from '@/lib/auth';
 import CartCount from './CartCount';
 import Logo from './Logo';
 
+// O painel administrativo NÃO tem botão nem link aqui, de propósito.
+// O administrador entra por um endereço próprio, que não aparece no site.
 export default async function Header() {
   let user = null;
   try {
@@ -27,7 +29,6 @@ export default async function Header() {
           <CartCount />
           {user ? (
             <>
-              {user.role === 'admin' && <Link href="/admin">Admin</Link>}
               <Link href="/conta">Minha conta</Link>
               <form action="/api/logout" method="post">
                 <button type="submit" className="link-btn">Sair</button>

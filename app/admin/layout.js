@@ -3,6 +3,11 @@ import { requireAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata = {
+  title: 'Painel',
+  robots: { index: false, follow: false },
+};
+
 export default async function AdminLayout({ children }) {
   await requireAdmin();
 
@@ -15,6 +20,7 @@ export default async function AdminLayout({ children }) {
           <Link href="/admin/produtos">Produtos e estoque</Link>
           <Link href="/admin/pedidos">Pedidos</Link>
           <Link href="/admin/configuracoes">Configurações</Link>
+          <Link href="/">Ver loja</Link>
         </div>
       </nav>
       <div className="wrap page">{children}</div>

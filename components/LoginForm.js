@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export default function LoginForm({ next }) {
+export default function LoginForm({ next, scope }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -15,7 +15,11 @@ export default function LoginForm({ next }) {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: form.get('email'), senha: form.get('senha') }),
+        body: JSON.stringify({
+          email: form.get('email'),
+          senha: form.get('senha'),
+          scope: scope || 'cliente',
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -23,8 +27,12 @@ export default function LoginForm({ next }) {
         setLoading(false);
         return;
       }
+      if (scope === 'admin') {
+        window.location.href = '/admin';
+        return;
+      }
       const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
-      window.location.href = data.role === 'admin' && safeNext === '/' ? '/admin' : safeNext;
+      window.location.href = safeNext;
     } catch {
       setError('Erro de conexão. Tente novamente.');
       setLoading(false);

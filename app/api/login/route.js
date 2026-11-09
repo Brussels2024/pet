@@ -15,6 +15,7 @@ export async function POST(request) {
 
   const email = String(body.email || '').trim().toLowerCase();
   const senha = String(body.senha || '');
+  const adminLogin = body.scope === 'admin';
 
   const rows = await query(
     'SELECT id, password_hash, role, status FROM users WHERE email = $1',
@@ -23,6 +24,10 @@ export async function POST(request) {
   const user = rows[0];
 
   if (!user || !bcrypt.compareSync(senha, user.password_hash)) {
+    return NextResponse.json({ error: 'E-mail ou senha incorretos.' }, { status: 401 });
+  }
+  // Pelo acesso restrito só administrador entra; para os demais a resposta é igual à de senha errada.
+  if (adminLogin && user.role !== 'admin') {
     return NextResponse.json({ error: 'E-mail ou senha incorretos.' }, { status: 401 });
   }
   if (user.status === 'bloqueado') {
