@@ -12,6 +12,10 @@ Distribuidora B2B de produtos pet para empresas com CNPJ. Next.js (App Router, J
 | `AUTH_SECRET` | Texto longo e aleatório para assinar o login. |
 | `ADMIN_EMAIL` | E-mail do administrador inicial. |
 | `ADMIN_PASSWORD` | Senha do administrador inicial (só é usada para criar a conta na primeira vez). |
+| `ASAAS_API_KEY` | Chave privada da API Asaas (somente no servidor). |
+| `ASAAS_ENV` | `sandbox` durante testes; `production` após homologação. |
+| `ASAAS_WEBHOOK_TOKEN` | Token próprio para autenticar os webhooks do Asaas (não é a chave da API). |
+| `ASAAS_API_URL` | Opcional; URL base para ambiente especial/testes. |
 
 As tabelas são criadas automaticamente no primeiro acesso.
 
@@ -25,6 +29,6 @@ As tabelas são criadas automaticamente no primeiro acesso.
 ## O que ainda falta
 
 - Recuperação de senha por e-mail (precisa de um serviço de envio).
-- Cobrança automática (Pix, boleto e cartão) e cálculo de frete.
+- Cobrança automática pelo Asaas (Pix, boleto e cartão de crédito) em implementação; cálculo de frete.
 - Emissão de nota fiscal.
 - Upload de fotos (hoje o produto usa o endereço de uma imagem).
