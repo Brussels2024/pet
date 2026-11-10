@@ -20,13 +20,20 @@ export default async function ProdutoFormPage({ params }) {
     image_url: '',
     category_id: '',
     active: true,
+    priority: false,
   };
+  let imageValues = [];
 
   if (!isNew) {
     const rows = await query('SELECT * FROM products WHERE id = $1', [Number(id) || 0]);
     if (!rows.length) notFound();
     product = rows[0];
+    const savedImages = await query('SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 6', [Number(id)]);
+    imageValues = savedImages.map((image) => image.image_url);
+    if (!imageValues.length && product.image_url) imageValues = [product.image_url];
   }
+
+  while (imageValues.length < 6) imageValues.push('');
 
   const cats = await query('SELECT id, name, parent_id FROM categories ORDER BY position, name, id');
   const parents = cats.filter((c) => !c.parent_id);
@@ -74,11 +81,27 @@ export default async function ProdutoFormPage({ params }) {
           </div>
         </div>
         <div className="field">
-          <ImagePicker name="image_url" initialValue={product.image_url || ''} label="Foto do produto" />
+          <label>Fotos do produto (até 6)</label>
+          <p className="muted">A primeira foto será a capa. As demais aparecem na galeria do anúncio. Você pode deixar os espaços vazios.</p>
+          <div className="product-image-pickers">
+            {imageValues.map((image, index) => (
+              <ImagePicker
+                key={index}
+                name={index === 0 ? 'image_url' : 'product_image_' + (index + 1)}
+                initialValue={image}
+                label={'Foto ' + (index + 1) + (index === 0 ? ' — capa' : '')}
+              />
+            ))}
+          </div>
         </div>
         <div className="field">
           <label htmlFor="description">Descrição</label>
           <textarea id="description" name="description" rows={4} defaultValue={product.description || ''} />
+        </div>
+        <div className="field">
+          <label>
+            <input type="checkbox" name="priority" defaultChecked={product.priority === true} /> Priorizar anúncio (destaque na loja)
+          </label>
         </div>
         <div className="field">
           <label>
