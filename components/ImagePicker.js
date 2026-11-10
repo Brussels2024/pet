@@ -21,14 +21,22 @@ export default function ImagePicker({ name, initialValue = '', label = 'Imagem' 
     reader.onload = () => {
       const image = new window.Image();
       image.onload = () => {
-        const maxWidth = 1500;
+        const maxWidth = 1400;
         const scale = Math.min(1, maxWidth / image.width);
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(image.width * scale));
         canvas.height = Math.max(1, Math.round(image.height * scale));
         const context = canvas.getContext('2d');
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        setValue(canvas.toDataURL('image/webp', 0.76));
+        let optimized = canvas.toDataURL('image/webp', 0.74);
+        if (optimized.length > 650000) optimized = canvas.toDataURL('image/webp', 0.62);
+        if (optimized.length > 650000) optimized = canvas.toDataURL('image/webp', 0.5);
+        if (optimized.length > 650000) {
+          window.alert('Essa foto ficou muito pesada. Escolha uma imagem menor ou com menos resolução.');
+          setBusy(false);
+          return;
+        }
+        setValue(optimized);
         setBusy(false);
       };
       image.onerror = () => {
@@ -70,7 +78,7 @@ export default function ImagePicker({ name, initialValue = '', label = 'Imagem' 
           aria-label="Endereço da imagem"
         />
       </details>
-      <p className="muted">A imagem escolhida é otimizada antes de ser salva.</p>
+      <p className="muted">As fotos são convertidas para WebP e compactadas automaticamente (limite de 650 KB por foto).</p>
     </div>
   );
 }
