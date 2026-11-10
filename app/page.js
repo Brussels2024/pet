@@ -45,13 +45,28 @@ export default async function Home({ searchParams }) {
   }
 
   const rows = await query(
-    `SELECT p.id, p.name, p.description, p.sku, p.price, p.stock, p.image_url
+    `SELECT p.id, p.name, p.description, p.sku, p.price, p.stock, p.image_url, p.priority
      FROM products p
      WHERE ${where.join(' AND ')}
-     ORDER BY p.name
+     ORDER BY p.priority DESC, p.name
      LIMIT 120`,
     params
   );
+
+  const imageRows = rows.length
+    ? await query('SELECT product_id, image_url, position FROM product_images WHERE product_id = ANY($1::int[]) ORDER BY product_id, position', [rows.map((product) => product.id)])
+    : [];
+  const imagesByProduct = new Map();
+  for (const image of imageRows) {
+    if (!imagesByProduct.has(image.product_id)) imagesByProduct.set(image.product_id, []);
+    imagesByProduct.get(image.product_id).push(image.image_url);
+  }
+  const products = rows.map((product) => ({
+    ...product,
+    images: imagesByProduct.get(product.id) || (product.image_url ? [product.image_url] : []),
+    image_url: (imagesByProduct.get(product.id) || [product.image_url])[0] || '',
+  }));
+  const priorityProducts = products.filter((product) => product.priority);
 
   const activeName = catId ? cats.find((c) => c.id === catId)?.name : null;
 
@@ -73,7 +88,7 @@ export default async function Home({ searchParams }) {
             </div>
           )}
 
-          <ProductCarousel products={rows} showPrice={showPrice} />
+          <ProductCarousel products={products} priorityProducts={priorityProducts} showPrice={showPrice} />
         </section>
       </div>
     </>
