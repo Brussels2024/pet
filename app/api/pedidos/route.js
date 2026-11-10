@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query, getSetting } from '@/lib/db';
 import { getUser, canSeePrices } from '@/lib/auth';
 import { brl } from '@/lib/format';
+import { enforceRequestLimit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,7 @@ export async function POST(request) {
   const user = await getUser();
   if (!user) return fail('Entre na sua conta para finalizar o pedido.', 401);
   if (!canSeePrices(user)) return fail('Sua conta ainda não foi aprovada para compras.', 403);
+  if (!(await enforceRequestLimit(request, 'orders', 10, 10 * 60, String(user.id)))) return fail('Muitos pedidos em pouco tempo. Aguarde e tente novamente.', 429);
 
   let body;
   try {
@@ -27,11 +29,13 @@ export async function POST(request) {
   if (!PAYMENTS.includes(payment)) return fail('Escolha a forma de pagamento.');
 
   const wanted = Array.isArray(body.items) ? body.items : [];
+  if (wanted.length > 50) return fail('O carrinho excede o limite de itens.');
   const qtyById = new Map();
   for (const item of wanted) {
     const id = Number(item.id);
     const qty = Math.floor(Number(item.qty));
-    if (id && qty > 0) qtyById.set(id, (qtyById.get(id) || 0) + qty);
+    if (id && qty > 0 && qty <= 100) qtyById.set(id, (qtyById.get(id) || 0) + qty);
+    else return fail('Quantidade de produto inválida.');
   }
   if (qtyById.size === 0) return fail('Seu carrinho está vazio.');
 
@@ -70,7 +74,8 @@ export async function POST(request) {
       'INSERT INTO order_items (order_id, product_id, name, price, qty) VALUES ($1, $2, $3, $4, $5)',
       [orderId, line.id, line.name, line.price.toFixed(2), line.qty]
     );
-    await query('UPDATE products SET stock = GREATEST(stock - $1, 0) WHERE id = $2', [line.qty, line.id]);
+    const reserved = await query('UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id', [line.qty, line.id]);
+    if (!reserved.length) return fail('O estoque mudou enquanto seu pedido era finalizado. Atualize o carrinho e tente novamente.', 409);
   }
 
   return NextResponse.json({ ok: true, orderId });
