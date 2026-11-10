@@ -86,6 +86,7 @@ export async function POST(request) {
     return result;
   }
 
+  let orderId = null;
   try {
     let asaasCustomerId = user.asaas_customer_id;
     if (!asaasCustomerId) {
@@ -112,7 +113,7 @@ export async function POST(request) {
        VALUES ($1, 'novo', 'asaas', $2, 0, $3, 'PENDING') RETURNING id`,
       [user.id, total.toFixed(2), String(body.notes || '').slice(0, 500)]
     );
-    const orderId = orderRows[0].id;
+    orderId = orderRows[0].id;
 
     for (const line of lines) {
       await query(
@@ -147,6 +148,9 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, orderId, invoiceUrl });
   } catch (error) {
     console.error('Erro ao criar cobrança Asaas:', error);
-    return fail('Não foi possível gerar o pagamento. Nenhuma cobrança foi confirmada. Tente novamente ou fale conosco.', 502);
+    if (orderId) {
+      await query("UPDATE orders SET payment_status = 'ERROR' WHERE id = $1", [orderId]).catch(() => {});
+    }
+    return fail('Não foi possível gerar o pagamento. O pedido ficou registrado para conferência. Tente novamente ou fale conosco.', 502);
   }
 }
