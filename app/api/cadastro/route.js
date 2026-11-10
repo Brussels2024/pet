@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import { createSession } from '@/lib/auth';
 import { isValidCnpj, lookupCnpj, onlyDigits } from '@/lib/cnpj';
+import { enforceRequestLimit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,12 +19,15 @@ export async function POST(request) {
     return fail('Dados inválidos.');
   }
 
+  const allowed = await enforceRequestLimit(request, 'registration', 5, 60 * 60);
+  if (!allowed) return fail('Muitas tentativas de cadastro. Aguarde uma hora.', 429);
+
   const email = String(body.email || '').trim().toLowerCase();
   const senha = String(body.senha || '');
   const cnpj = onlyDigits(body.cnpj);
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Informe um e-mail válido.');
-  if (senha.length < 6) return fail('A senha precisa ter pelo menos 6 caracteres.');
+  if (senha.length < 12 || Buffer.byteLength(senha, 'utf8') > 72) return fail('A senha precisa ter pelo menos 12 caracteres e no máximo 72 bytes.');
   if (!isValidCnpj(cnpj)) return fail('CNPJ inválido. Confira os números digitados.');
 
   const dupEmail = await query('SELECT id FROM users WHERE email = $1', [email]);
@@ -53,7 +57,7 @@ export async function POST(request) {
   // Se a consulta estiver fora do ar, o cadastro fica pendente para aprovação manual.
 
   const pick = (key) => String(body[key] || data[key] || '').trim();
-  const hash = bcrypt.hashSync(senha, 10);
+  const hash = await bcrypt.hash(senha, 12);
 
   const rows = await query(
     `INSERT INTO users
@@ -80,7 +84,7 @@ export async function POST(request) {
     ]
   );
 
-  await createSession(rows[0].id);
+  await createSession(rows[0].id, 0);
 
   return NextResponse.json({
     ok: true,
