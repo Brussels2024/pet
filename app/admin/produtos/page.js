@@ -17,7 +17,7 @@ export default async function ProdutosPage({ searchParams }) {
   }
 
   const products = await query(
-    `SELECT p.id, p.name, p.sku, p.price, p.stock, p.active, p.image_url, c.name AS category
+    `SELECT p.id, p.name, p.sku, p.price, p.stock, p.active, p.image_url, p.priority, c.name AS category
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        ${where}
@@ -49,6 +49,7 @@ export default async function ProdutosPage({ searchParams }) {
                 <th>Categoria</th>
                 <th>Preço</th>
                 <th>Estoque</th>
+                <th>Destaque</th>
                 <th>Situação</th>
                 <th></th>
               </tr>
@@ -76,6 +77,7 @@ export default async function ProdutosPage({ searchParams }) {
                       <button className="btn small outline" type="submit">Salvar</button>
                     </form>
                   </td>
+                  <td>{p.priority ? <span className="tag product-featured-tag">Prioritário</span> : <span className="muted">—</span>}</td>
                   <td>{p.active ? <span className="tag ativo">Ativo</span> : <span className="tag">Oculto</span>}</td>
                   <td><Link className="btn small" href={`/admin/produtos/${p.id}`}>Editar</Link></td>
                 </tr>
