@@ -1,5 +1,6 @@
 import './globals.css';
 import Header from '@/components/Header';
+import StoreChrome from '@/components/StoreChrome';
 import { getSetting } from '@/lib/db';
 
 export const metadata = {
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export default async function RootLayout({ children }) {
   let whatsapp = '';
   try {
-    whatsapp = (await getSetting('whatsapp', '')).replace(/\D/g, '');
+    whatsapp = (await getSetting('whatsapp', '')).replace(/\\D/g, '');
   } catch {
     whatsapp = '';
   }
@@ -20,21 +21,17 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <body>
-        <Header />
-        <main>{children}</main>
-        <footer className="site-footer">
-          <div className="wrap">Brussels Pet · Since 2024 · Venda exclusiva para empresas (CNPJ)</div>
-        </footer>
-        {whatsapp && (
-          <a
-            className="whats"
-            href={`https://wa.me/${whatsapp}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            WhatsApp
-          </a>
-        )}
+        <StoreChrome
+          header={<Header />}
+          footer={
+            <footer className="site-footer">
+              <div className="wrap">Brussels Pet · Since 2024 · Venda exclusiva para empresas (CNPJ)</div>
+            </footer>
+          }
+          whatsapp={whatsapp}
+        >
+          {children}
+        </StoreChrome>
       </body>
     </html>
   );
