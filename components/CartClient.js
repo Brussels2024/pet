@@ -8,7 +8,7 @@ const brl = (n) => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency',
 export default function CartClient({ minOrder, status }) {
   const [cart, setCart] = useState([]);
   const [ready, setReady] = useState(false);
-  const [payment, setPayment] = useState('pix');
+  const [payment, setPayment] = useState('asaas');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -62,7 +62,7 @@ export default function CartClient({ minOrder, status }) {
       }
       localStorage.removeItem('bp_cart');
       window.dispatchEvent(new Event('cart-changed'));
-      window.location.href = `/conta?pedido=${data.orderId}`;
+      window.location.href = data.invoiceUrl || `/conta?pedido=${data.orderId}`;
     } catch {
       setError('Erro de conexão. Tente novamente.');
       setBusy(false);
@@ -127,11 +127,10 @@ export default function CartClient({ minOrder, status }) {
         <div className="field">
           <label htmlFor="pay">Forma de pagamento</label>
           <select id="pay" value={payment} onChange={(e) => setPayment(e.target.value)}>
-            <option value="pix">Pix</option>
-            <option value="boleto">Boleto</option>
-            <option value="cartao">Cartão</option>
+            <option value="asaas">Pix, boleto ou cartão de crédito — Asaas</option>
           </select>
         </div>
+        <p className="muted">Você será encaminhado para a página segura do Asaas para escolher Pix, boleto ou cartão de crédito. O boleto também poderá ser enviado ao e-mail cadastrado, conforme as notificações da sua conta Asaas.</p>
         <div className="field">
           <label htmlFor="notes">Observações</label>
           <textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
