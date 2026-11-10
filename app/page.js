@@ -59,7 +59,14 @@ export default async function Home({ searchParams }) {
       <CategoryMenu tree={tree} activeId={catId} />
 
       <section>
-        <h1>{q ? `Resultados para “${q}”` : activeName || 'Todos os produtos'}</h1>
+        <h1>{q ? `Resultados para “${q}”` : activeName || 'Distribuidora de produtos pet para empresas'}</h1>
+        {!q && !catId && (
+          <p className="muted">
+            A Brussels Pet é uma distribuidora de produtos pet para lojistas e empresas com CNPJ.
+            Consulte nosso catálogo de produtos para cães e gatos e faça seus pedidos online.
+            Atendemos empresas em todo o Brasil.
+          </p>
+        )}
 
         {!showPrice && (
           <div className="msg warn">
