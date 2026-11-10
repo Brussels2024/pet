@@ -10,6 +10,10 @@ export default function ProductCarousel({ products = [], showPrice }) {
   const pages = Math.max(1, Math.ceil(total / 4));
 
   useEffect(() => {
+    setStart((current) => Math.min(Math.floor(current / 4) * 4, (pages - 1) * 4));
+  }, [pages]);
+
+  useEffect(() => {
     if (pages < 2) return;
     const timer = window.setInterval(() => {
       setStart((current) => ((Math.floor(current / 4) + 1) % pages) * 4);
