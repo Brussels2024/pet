@@ -18,7 +18,8 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 });
   }
   const email = String(body.email || '').trim().toLowerCase();
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+  const at = email.indexOf('@');
+  if (at < 1 || at === email.length - 1 || email.lastIndexOf('.') <= at + 1 || email.includes(' ') || email.length > 254) {
     return NextResponse.json(generic);
   }
   if (!(await enforceRequestLimit(request, 'password-recovery', 5, 60 * 60, email))) {
@@ -32,8 +33,8 @@ export async function POST(request) {
   const tokenHash = hashRecoveryValue(token);
   await query('UPDATE password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [users[0].id]);
   await query(
-    `INSERT INTO password_resets (user_id, token_hash, expires_at)
-     VALUES ($1, $2, now() + interval '15 minutes')`,
+    \`INSERT INTO password_resets (user_id, token_hash, expires_at)
+     VALUES ($1, $2, now() + interval '15 minutes')\`,
     [users[0].id, tokenHash]
   );
 
@@ -41,14 +42,13 @@ export async function POST(request) {
     const base = process.env.NEXT_PUBLIC_APP_URL
       ? new URL(process.env.NEXT_PUBLIC_APP_URL).origin
       : process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
+        ? \`https://\${process.env.VERCEL_URL}\`
         : '';
     if (!base) throw new Error('URL pública não configurada.');
-    const link = `${base}/redefinir-senha?token=${encodeURIComponent(token)}`;
+    const link = \`\${base}/redefinir-senha?token=\${encodeURIComponent(token)}\`;
     await sendRecoveryEmail({ to: users[0].email, link });
   } catch (error) {
     console.error('Falha no envio de recuperação:', error);
-    // Não revelar se o e-mail existe nem se o envio falhou.
   }
   return NextResponse.json(generic);
 }
