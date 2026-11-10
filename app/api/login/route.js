@@ -53,6 +53,6 @@ export async function POST(request) {
     return NextResponse.json({ error: 'E-mail ou senha incorretos.' }, { status: 401 });
   }
 
-  await createSession(user.id, user.session_version);
+  await createSession(user.id, user.session_version, user.role);
   return NextResponse.json({ ok: true, role: user.role });
 }
