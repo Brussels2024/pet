@@ -20,6 +20,7 @@ export async function POST(request) {
 
   let body;
   try {
+    if (Number(request.headers.get('content-length') || 0) > 30000) return fail('Dados inválidos.', 413);
     body = await request.json();
   } catch {
     return fail('Dados inválidos.');
