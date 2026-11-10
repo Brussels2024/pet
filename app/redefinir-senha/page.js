@@ -34,7 +34,7 @@ function ResetForm() {
   return <>
     <h1>Criar nova senha</h1>
     <form onSubmit={submit}>
-      <div className="field"><label htmlFor="senha">Nova senha (mínimo 12 caracteres)</label><input id="senha" name="senha" type="password" minLength={12} required autoComplete="new-password" /></div>
+      <div className="field"><label htmlFor="senha">Nova senha (mínimo 12 caracteres)</label><input id="senha" name="senha" type="password" minLength={12} maxLength={72} required autoComplete="new-password" /></div>
       <div className="field"><label htmlFor="confirmacao">Confirme a nova senha</label><input id="confirmacao" name="confirmacao" type="password" minLength={8} required autoComplete="new-password" /></div>
       {message && <div className="msg error">{message}</div>}
       <button className="btn" type="submit" disabled={busy || !token} style={{ width: '100%' }}>{busy ? 'Salvando...' : 'Salvar nova senha'}</button>
