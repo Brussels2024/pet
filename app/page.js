@@ -66,7 +66,8 @@ export default async function Home({ searchParams }) {
     images: imagesByProduct.get(product.id) || (product.image_url ? [product.image_url] : []),
     image_url: (imagesByProduct.get(product.id) || [product.image_url])[0] || '',
   }));
-  const priorityProducts = products.filter((product) => product.priority);
+  const storefrontProducts = showPrice ? products : products.map(({ price, ...product }) => product);
+  const priorityProducts = storefrontProducts.filter((product) => product.priority);
 
   const activeName = catId ? cats.find((c) => c.id === catId)?.name : null;
 
@@ -88,7 +89,7 @@ export default async function Home({ searchParams }) {
             </div>
           )}
 
-          <ProductCarousel products={products} priorityProducts={priorityProducts} showPrice={showPrice} />
+          <ProductCarousel products={storefrontProducts} priorityProducts={priorityProducts} showPrice={showPrice} />
         </section>
       </div>
     </>
