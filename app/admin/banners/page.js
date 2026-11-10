@@ -18,31 +18,30 @@ export default async function BannersPage() {
         {[1, 2, 3].map((position) => {
           const banner = byPosition.get(position);
           return (
-            <form action={saveBanner} className="card banner-admin-card" key={position}>
-              <input type="hidden" name="position" value={position} />
-              {banner && <input type="hidden" name="id" value={banner.id} />}
-              <h2>Banner {position}</h2>
-              <div className="field">
-                <label htmlFor={`title-${position}`}>Título (opcional)</label>
-                <input id={`title-${position}`} name="title" defaultValue={banner?.title || ''} placeholder="Ex.: Ofertas especiais" />
-              </div>
-              <ImagePicker name="image_url" initialValue={banner?.image_url || ''} label="Imagem do banner" />
-              <div className="field banner-active-field">
-                <label>
-                  <input type="checkbox" name="active" defaultChecked={banner ? banner.active : true} />
-                  Exibir na loja
-                </label>
-              </div>
-              <div className="row-actions">
+            <div className="card banner-admin-card" key={position}>
+              <form action={saveBanner}>
+                <input type="hidden" name="position" value={position} />
+                <h2>Banner {position}</h2>
+                <div className="field">
+                  <label htmlFor={`title-${position}`}>Título (opcional)</label>
+                  <input id={`title-${position}`} name="title" defaultValue={banner?.title || ''} placeholder="Ex.: Ofertas especiais" />
+                </div>
+                <ImagePicker name="image_url" initialValue={banner?.image_url || ''} label="Imagem do banner" />
+                <div className="field banner-active-field">
+                  <label>
+                    <input type="checkbox" name="active" defaultChecked={banner ? banner.active : true} />
+                    Exibir na loja
+                  </label>
+                </div>
                 <button className="btn" type="submit">Salvar banner</button>
-                {banner && (
-                  <form action={deleteBanner}>
-                    <input type="hidden" name="id" value={banner.id} />
-                    <button className="btn danger" type="submit">Excluir</button>
-                  </form>
-                )}
-              </div>
-            </form>
+              </form>
+              {banner && (
+                <form action={deleteBanner} className="banner-delete-form">
+                  <input type="hidden" name="id" value={banner.id} />
+                  <button className="btn danger" type="submit">Excluir banner</button>
+                </form>
+              )}
+            </div>
           );
         })}
       </div>
