@@ -34,7 +34,11 @@ export async function POST(request) {
   for (const item of wanted) {
     const id = Number(item.id);
     const qty = Math.floor(Number(item.qty));
-    if (id && qty > 0 && qty <= 100) qtyById.set(id, (qtyById.get(id) || 0) + qty);
+    if (id && qty > 0 && qty <= 100) {
+      const nextQty = (qtyById.get(id) || 0) + qty;
+      if (nextQty > 100) return fail('Quantidade máxima por produto: 100 unidades.');
+      qtyById.set(id, nextQty);
+    }
     else return fail('Quantidade de produto inválida.');
   }
   if (qtyById.size === 0) return fail('Seu carrinho está vazio.');
@@ -62,20 +66,41 @@ export async function POST(request) {
     return fail(`O pedido mínimo é de ${brl(minOrder)}. Seu carrinho está em ${brl(total)}.`, 422);
   }
 
-  const orderRows = await query(
-    `INSERT INTO orders (user_id, status, payment_method, total, shipping, notes)
-     VALUES ($1, 'novo', $2, $3, 0, $4) RETURNING id`,
-    [user.id, payment, total.toFixed(2), String(body.notes || '').slice(0, 500)]
-  );
-  const orderId = orderRows[0].id;
-
+  const reservedLines = [];
   for (const line of lines) {
-    await query(
-      'INSERT INTO order_items (order_id, product_id, name, price, qty) VALUES ($1, $2, $3, $4, $5)',
-      [orderId, line.id, line.name, line.price.toFixed(2), line.qty]
+    const reserved = await query(
+      'UPDATE products SET stock = stock - $1 WHERE id = $2 AND active = true AND stock >= $1 RETURNING id',
+      [line.qty, line.id]
     );
-    const reserved = await query('UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING id', [line.qty, line.id]);
-    if (!reserved.length) return fail('O estoque mudou enquanto seu pedido era finalizado. Atualize o carrinho e tente novamente.', 409);
+    if (!reserved.length) {
+      for (const previous of reservedLines) {
+        await query('UPDATE products SET stock = stock + $1 WHERE id = $2', [previous.qty, previous.id]);
+      }
+      return fail('O estoque mudou enquanto seu pedido era finalizado. Atualize o carrinho e tente novamente.', 409);
+    }
+    reservedLines.push(line);
+  }
+
+  let orderId;
+  try {
+    const orderRows = await query(
+      `INSERT INTO orders (user_id, status, payment_method, total, shipping, notes)
+       VALUES ($1, 'novo', $2, $3, 0, $4) RETURNING id`,
+      [user.id, payment, total.toFixed(2), String(body.notes || '').slice(0, 500)]
+    );
+    orderId = orderRows[0].id;
+    for (const line of lines) {
+      await query(
+        'INSERT INTO order_items (order_id, product_id, name, price, qty) VALUES ($1, $2, $3, $4, $5)',
+        [orderId, line.id, line.name, line.price.toFixed(2), line.qty]
+      );
+    }
+  } catch (error) {
+    if (orderId) await query('DELETE FROM orders WHERE id = $1', [orderId]);
+    for (const line of reservedLines) {
+      await query('UPDATE products SET stock = stock + $1 WHERE id = $2', [line.qty, line.id]);
+    }
+    throw error;
   }
 
   return NextResponse.json({ ok: true, orderId });
