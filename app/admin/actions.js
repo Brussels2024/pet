@@ -69,34 +69,57 @@ export async function saveProduct(formData) {
   const name = text(formData, 'name');
   if (!name) return;
 
+  const images = [];
+  for (let i = 1; i <= 6; i++) {
+    const key = i === 1 ? 'image_url' : 'product_image_' + i;
+    const value = text(formData, key);
+    if (!value) continue;
+    if (value.length > 700000) return;
+    if (!/^data:image\/(webp|jpeg|png);base64,/.test(value) && !/^https?:\/\//i.test(value)) return;
+    images.push(value);
+  }
+  const cover = images[0] || '';
   const values = [
     name,
     text(formData, 'description'),
     text(formData, 'sku'),
     num(formData, 'price').toFixed(2),
     Math.max(0, Math.floor(num(formData, 'stock'))),
-    text(formData, 'image_url'),
+    cover,
     Number(formData.get('category_id')) || null,
     formData.get('active') === 'on',
+    formData.get('priority') === 'on',
   ];
 
+  let productId = id;
   if (id) {
     await query(
       `UPDATE products
          SET name = $1, description = $2, sku = $3, price = $4, stock = $5,
-             image_url = $6, category_id = $7, active = $8
-       WHERE id = $9`,
+             image_url = $6, category_id = $7, active = $8, priority = $9
+       WHERE id = $10`,
       [...values, id]
     );
   } else {
-    await query(
-      `INSERT INTO products (name, description, sku, price, stock, image_url, category_id, active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    const inserted = await query(
+      `INSERT INTO products (name, description, sku, price, stock, image_url, category_id, active, priority)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
       values
+    );
+    productId = inserted[0]?.id;
+  }
+
+  if (!productId) throw new Error('Não foi possível salvar o produto.');
+  await query('DELETE FROM product_images WHERE product_id = $1', [productId]);
+  for (let i = 0; i < images.length; i++) {
+    await query(
+      'INSERT INTO product_images (product_id, image_url, position) VALUES ($1, $2, $3)',
+      [productId, images[i], i + 1]
     );
   }
   revalidatePath('/admin/produtos');
   revalidatePath('/');
+  revalidatePath('/produto/' + productId);
   redirect('/admin/produtos');
 }
 
