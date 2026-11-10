@@ -192,8 +192,8 @@ export default function CadastroForm() {
           <input id="email" type="email" value={f.email} onChange={set('email')} required autoComplete="email" />
         </div>
         <div className="field">
-          <label htmlFor="senha">Senha (mínimo 6 caracteres)</label>
-          <input id="senha" type="password" value={f.senha} onChange={set('senha')} required minLength={6} autoComplete="new-password" />
+          <label htmlFor="senha">Senha (mínimo 12 caracteres)</label>
+          <input id="senha" type="password" value={f.senha} onChange={set('senha')} required minLength={12} autoComplete="new-password" maxLength={72} />
         </div>
       </div>
 
