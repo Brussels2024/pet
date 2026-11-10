@@ -21,7 +21,6 @@ export default async function AdminLayout({ children }) {
           <Link href="/admin/banners">Banners</Link>
           <Link href="/admin/pedidos">Pedidos</Link>
           <Link href="/admin/configuracoes">Configurações</Link>
-          <Link href="/">Ver loja</Link>
         </div>
       </nav>
       <div className="wrap page">{children}</div>
