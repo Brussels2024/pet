@@ -29,7 +29,7 @@ export async function POST(request) {
        VALUES ($1, $2, now() + interval '15 minutes')`,
       [users[0].id, tokenHash]
     );
-    const base = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || request.nextUrl.origin;
+    const base = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
     const link = `${base.startsWith('http') ? base : 'https://' + base}/redefinir-senha?token=${encodeURIComponent(token)}`;
     try {
       await sendRecoveryEmail({ to: users[0].email, link });
