@@ -1,15 +1,17 @@
 import Link from 'next/link';
-import { requireAdmin } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { getUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Painel',
+  title: 'Painel administrativo — Brussels Pet',
   robots: { index: false, follow: false },
 };
 
 export default async function AdminLayout({ children }) {
-  await requireAdmin();
+  const user = await getUser();
+  if (!user || user.role !== 'admin') redirect('/admin-login');
 
   return (
     <>
@@ -21,6 +23,9 @@ export default async function AdminLayout({ children }) {
           <Link href="/admin/banners">Banners</Link>
           <Link href="/admin/pedidos">Pedidos</Link>
           <Link href="/admin/configuracoes">Configurações</Link>
+          <form action="/api/logout" method="post">
+            <button type="submit" className="link-btn">Sair</button>
+          </form>
         </div>
       </nav>
       <div className="wrap page">{children}</div>
