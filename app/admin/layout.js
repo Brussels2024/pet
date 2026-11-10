@@ -7,6 +7,6 @@ export const metadata = { title: 'Painel administrativo — Brussels Pet', robot
 
 export default async function AdminLayout({ children }) {
   const user = await getUser();
-  if (!user || user.role !== 'admin') redirect('/admin-login');
+  if (!user || user.role !== 'admin' || user.status !== 'ativo') redirect('/admin-login');
   return <><AdminNavigation /><div className="wrap page admin-content">{children}</div></>;
 }
