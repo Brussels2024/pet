@@ -20,7 +20,7 @@ export default async function ContaPage({ searchParams }) {
   const novoPedido = sp?.pedido ? Number(sp.pedido) : null;
 
   const orders = await query(
-    'SELECT id, status, payment_method, total, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50',
+    'SELECT id, status, payment_method, total, created_at, payment_status, asaas_invoice_url FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50',
     [user.id]
   );
 
@@ -30,7 +30,7 @@ export default async function ContaPage({ searchParams }) {
 
       {novoPedido && (
         <div className="msg ok">
-          Pedido #{novoPedido} enviado! Entraremos em contato para combinar o pagamento e o frete.
+          Pedido #{novoPedido} criado! Se ainda não concluiu o pagamento, use o link disponível na lista abaixo.
         </div>
       )}
 
@@ -69,7 +69,7 @@ export default async function ContaPage({ searchParams }) {
                   <td>{dateTimeBr(o.created_at)}</td>
                   <td style={{ textTransform: 'capitalize' }}>{o.payment_method}</td>
                   <td>{brl(o.total)}</td>
-                  <td>{o.status}</td>
+                  <td>{o.payment_status || o.status}{o.asaas_invoice_url && o.payment_status !== 'RECEIVED' && o.payment_status !== 'CONFIRMED' ? <> · <a href={o.asaas_invoice_url} target="_blank" rel="noopener noreferrer"><b> Pagar pedido</b></a></> : null}</td>
                 </tr>
               ))}
             </tbody>
