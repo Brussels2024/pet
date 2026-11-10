@@ -29,7 +29,13 @@ export async function saveBanner(formData) {
   const active = formData.get('active') === 'on';
 
   if (![1, 2, 3].includes(position)) return;
-  if (!imageUrl || imageUrl.length > 1500000) return;
+  if (!imageUrl) {
+    await query('DELETE FROM banners WHERE position = $1', [position]);
+    revalidatePath('/admin/banners');
+    revalidatePath('/');
+    return;
+  }
+  if (imageUrl.length > 1500000) return;
   if (!/^data:image\/(webp|jpeg|png|gif);base64,/.test(imageUrl) && !/^https?:\/\//i.test(imageUrl)) return;
 
   await query(
