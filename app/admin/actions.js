@@ -19,6 +19,42 @@ export async function setUserStatus(formData) {
   revalidatePath('/admin/clientes');
 }
 
+/* ---------- Banners ---------- */
+
+export async function saveBanner(formData) {
+  await requireAdmin();
+  const position = Math.floor(Number(formData.get('position')));
+  const title = text(formData, 'title');
+  const imageUrl = text(formData, 'image_url');
+  const active = formData.get('active') === 'on';
+
+  if (![1, 2, 3].includes(position)) return;
+  if (!imageUrl || imageUrl.length > 1500000) return;
+  if (!/^data:image\/(webp|jpeg|png|gif);base64,/.test(imageUrl) && !/^https?:\/\//i.test(imageUrl)) return;
+
+  await query(
+    `INSERT INTO banners (position, title, image_url, active)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (position) DO UPDATE
+       SET title = EXCLUDED.title,
+           image_url = EXCLUDED.image_url,
+           active = EXCLUDED.active,
+           updated_at = now()`,
+    [position, title, imageUrl, active]
+  );
+  revalidatePath('/admin/banners');
+  revalidatePath('/');
+}
+
+export async function deleteBanner(formData) {
+  await requireAdmin();
+  const id = Number(formData.get('id'));
+  if (!id) return;
+  await query('DELETE FROM banners WHERE id = $1', [id]);
+  revalidatePath('/admin/banners');
+  revalidatePath('/');
+}
+
 /* ---------- Produtos ---------- */
 
 export async function saveProduct(formData) {
