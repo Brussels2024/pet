@@ -85,7 +85,7 @@ export async function POST(request) {
     ]
   );
 
-  await createSession(rows[0].id, 0);
+  await createSession(rows[0].id, 0, 'cliente');
 
   return NextResponse.json({
     ok: true,
