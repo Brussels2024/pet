@@ -10,7 +10,7 @@ export default function BannerCarousel({ banners = [] }) {
     if (slides.length < 2) return;
     const timer = window.setInterval(() => {
       setActive((current) => (current + 1) % slides.length);
-    }, 30000);
+    }, 10000);
     return () => window.clearInterval(timer);
   }, [slides.length]);
 
