@@ -1,44 +1,56 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { brl } from '@/lib/format';
 import AddToCart from '@/components/AddToCart';
 
-export default function ProductCarousel({ products = [], showPrice }) {
-  const [start, setStart] = useState(0);
-  const total = products.length;
-  const pages = Math.max(1, Math.ceil(total / 4));
+function shuffle(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function ProductRail({ title, subtitle, products, showPrice, randomize = false }) {
+  const [page, setPage] = useState(0);
+  const [randomProducts, setRandomProducts] = useState(products);
+  const ordered = randomize ? randomProducts : products;
+  const pages = Math.max(1, Math.ceil(ordered.length / 4));
 
   useEffect(() => {
-    setStart((current) => Math.min(Math.floor(current / 4) * 4, (pages - 1) * 4));
-  }, [pages]);
+    if (randomize) setRandomProducts(shuffle(products));
+  }, [products, randomize]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [products.length]);
 
   useEffect(() => {
     if (pages < 2) return;
     const timer = window.setInterval(() => {
-      setStart((current) => ((Math.floor(current / 4) + 1) % pages) * 4);
-    }, 30000);
+      setPage((current) => (current + 1) % pages);
+    }, 10000);
     return () => window.clearInterval(timer);
   }, [pages]);
 
-  if (!total) return <p className="muted">Nenhum produto encontrado.</p>;
-
-  const move = (direction) => {
-    setStart((current) => ((Math.floor(current / 4) + direction + pages) % pages) * 4);
-  };
-  const visible = products.slice(start, start + 4);
+  if (!ordered.length) return null;
+  const visible = ordered.slice(page * 4, page * 4 + 4);
+  const move = (direction) => setPage((current) => (current + direction + pages) % pages);
 
   return (
-    <section className="product-showcase" aria-label="Vitrine de produtos">
+    <section className="product-showcase" aria-label={title}>
       <div className="showcase-heading">
         <div>
-          <h2>Produtos em destaque</h2>
-          <p className="muted">Confira nossa seleção de produtos para sua empresa.</p>
+          <h2>{title}</h2>
+          {subtitle && <p className="muted">{subtitle}</p>}
         </div>
         {pages > 1 && (
           <div className="showcase-controls">
             <button type="button" onClick={() => move(-1)} aria-label="Quatro produtos anteriores">‹</button>
-            <span>{Math.floor(start / 4) + 1} / {pages}</span>
+            <span>{page + 1} / {pages}</span>
             <button type="button" onClick={() => move(1)} aria-label="Próximos quatro produtos">›</button>
           </div>
         )}
@@ -46,12 +58,16 @@ export default function ProductCarousel({ products = [], showPrice }) {
       <div className="products showcase-products">
         {visible.map((p) => (
           <article className="product" key={p.id}>
-            <div className="photo">
-              {p.image_url ? <img src={p.image_url} alt={p.name} loading="lazy" /> : 'Sem foto'}
-            </div>
-            <div className="info">
-              <div className="name">{p.name}</div>
-              {p.sku && <div className="sku">Cód. {p.sku}</div>}
+            <Link className="product-detail-link" href={'/produto/' + p.id} aria-label={'Ver detalhes de ' + p.name}>
+              <div className="photo">
+                {p.image_url ? <img src={p.image_url} alt={p.name} loading="lazy" /> : 'Sem foto'}
+              </div>
+              <div className="info">
+                <div className="name">{p.name}</div>
+                {p.sku && <div className="sku">Cód. {p.sku}</div>}
+              </div>
+            </Link>
+            <div className="info product-purchase-info">
               {showPrice ? (
                 <>
                   <div className="price">{brl(p.price)}</div>
@@ -73,5 +89,33 @@ export default function ProductCarousel({ products = [], showPrice }) {
         ))}
       </div>
     </section>
+  );
+}
+
+export default function ProductCarousel({ products = [], priorityProducts = [], showPrice }) {
+  const featured = useMemo(() => priorityProducts.slice(0, 8), [priorityProducts]);
+  const featuredIds = new Set(featured.map((product) => product.id));
+  const regular = products.filter((product) => !featuredIds.has(product.id));
+
+  if (!products.length && !priorityProducts.length) {
+    return <p className="muted">Nenhum produto encontrado.</p>;
+  }
+
+  return (
+    <>
+      <ProductRail
+        title="Produtos em destaque"
+        subtitle="Anúncios priorizados pela Brussels Pet."
+        products={featured}
+        showPrice={showPrice}
+      />
+      <ProductRail
+        title={featured.length ? 'Mais produtos' : 'Produtos'}
+        subtitle="Confira outros produtos da nossa loja."
+        products={regular}
+        showPrice={showPrice}
+        randomize
+      />
+    </>
   );
 }
