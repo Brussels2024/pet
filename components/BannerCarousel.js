@@ -25,21 +25,22 @@ export default function BannerCarousel({ banners = [] }) {
   };
 
   return (
-    <section className="banner-carousel" aria-label="Destaques da Brussels Pet">
-      {slides.map((banner, index) => (
-        <div
-          className={`banner-slide${index === active ? ' active' : ''}`}
-          key={banner.id || banner.position}
-          aria-hidden={index !== active}
-        >
-          <img src={banner.image_url} alt={banner.title || 'Destaque Brussels Pet'} />
-          {banner.title && <span className="banner-caption">{banner.title}</span>}
-        </div>
-      ))}
+    <section className="banner-carousel-shell" aria-label="Destaques da Brussels Pet">
       {slides.length > 1 && (
-        <>
-          <button type="button" className="banner-arrow prev" onClick={() => move(-1)} aria-label="Banner anterior">‹</button>
-          <button type="button" className="banner-arrow next" onClick={() => move(1)} aria-label="Próximo banner">›</button>
+        <button type="button" className="banner-arrow prev" onClick={() => move(-1)} aria-label="Banner anterior">‹</button>
+      )}
+      <div className="banner-carousel">
+        {slides.map((banner, index) => (
+          <div
+            className={`banner-slide${index === active ? ' active' : ''}`}
+            key={banner.id || banner.position}
+            aria-hidden={index !== active}
+          >
+            <img src={banner.image_url} alt={banner.title || 'Destaque Brussels Pet'} />
+            {banner.title && <span className="banner-caption">{banner.title}</span>}
+          </div>
+        ))}
+        {slides.length > 1 && (
           <div className="banner-dots">
             {slides.map((banner, index) => (
               <button
@@ -52,7 +53,10 @@ export default function BannerCarousel({ banners = [] }) {
               />
             ))}
           </div>
-        </>
+        )}
+      </div>
+      {slides.length > 1 && (
+        <button type="button" className="banner-arrow next" onClick={() => move(1)} aria-label="Próximo banner">›</button>
       )}
     </section>
   );
