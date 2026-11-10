@@ -1,27 +1,30 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { allowRecoveryAttempt, maskEmail } from '@/lib/recovery';
+import { maskEmail } from '@/lib/recovery';
+import { enforceRequestLimit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   let body;
-  try { body = await request.json(); } catch {
+  try {
+    if (Number(request.headers.get('content-length') || 0) > 10000) return NextResponse.json({ error: 'Dados inválidos.' }, { status: 413 });
+    body = await request.json();
+  } catch {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 });
   }
-  const cnpj = String(body.cnpj || '').replace(/\D/g, '');
-  const telefone = String(body.telefone || '').replace(/\D/g, '');
-  if (cnpj.length !== 14 || telefone.length < 10) {
+  const cnpj = String(body.cnpj || '').replace(/\\D/g, '');
+  const telefone = String(body.telefone || '').replace(/\\D/g, '');
+  if (cnpj.length !== 14 || telefone.length < 10 || telefone.length > 13) {
     return NextResponse.json({ error: 'Confira o CNPJ e o telefone informados.' }, { status: 400 });
   }
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (!(await allowRecoveryAttempt('email:' + ip))) {
-    return NextResponse.json({ message: 'Se os dados corresponderem a uma conta, mostraremos o e-mail parcialmente oculto.' });
+  if (!(await enforceRequestLimit(request, 'email-recovery', 5, 60 * 60, cnpj))) {
+    return NextResponse.json({ message: 'Não foi possível confirmar os dados. Aguarde e tente novamente.' }, { status: 429, headers: { 'Retry-After': '3600' } });
   }
   const rows = await query(
     `SELECT email FROM users
-     WHERE regexp_replace(COALESCE(cnpj, ''), '\\D', '', 'g') = $1
-       AND regexp_replace(COALESCE(telefone, ''), '\\D', '', 'g') = $2
+     WHERE regexp_replace(COALESCE(cnpj, ''), '\\\\D', '', 'g') = $1
+       AND regexp_replace(COALESCE(telefone, ''), '\\\\D', '', 'g') = $2
      LIMIT 1`,
     [cnpj, telefone]
   );
