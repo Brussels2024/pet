@@ -18,6 +18,7 @@ export default async function AdminLayout({ children }) {
           <Link href="/admin">Painel</Link>
           <Link href="/admin/clientes">Clientes</Link>
           <Link href="/admin/produtos">Produtos e estoque</Link>
+          <Link href="/admin/banners">Banners</Link>
           <Link href="/admin/pedidos">Pedidos</Link>
           <Link href="/admin/configuracoes">Configurações</Link>
           <Link href="/">Ver loja</Link>
