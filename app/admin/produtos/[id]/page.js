@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { query } from '@/lib/db';
 import { saveProduct } from '../../actions';
+import ImagePicker from '@/components/ImagePicker';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,8 +74,7 @@ export default async function ProdutoFormPage({ params }) {
           </div>
         </div>
         <div className="field">
-          <label htmlFor="image_url">Foto (endereço da imagem)</label>
-          <input id="image_url" name="image_url" type="url" defaultValue={product.image_url || ''} placeholder="https://..." />
+          <ImagePicker name="image_url" initialValue={product.image_url || ''} label="Foto do produto" />
         </div>
         <div className="field">
           <label htmlFor="description">Descrição</label>
