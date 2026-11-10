@@ -92,16 +92,16 @@ export async function POST(request) {
     if (!asaasCustomerId) {
       const customer = await asaasRequest('/customers', {
         name: user.razao_social || user.nome_fantasia || user.email,
-        cpfCnpj: String(user.cnpj || '').replace(/\\D/g, ''),
+        cpfCnpj: String(user.cnpj || '').replace(/\D/g, ''),
         email: user.email,
-        mobilePhone: String(user.telefone || '').replace(/\\D/g, '') || undefined,
+        mobilePhone: String(user.telefone || '').replace(/\D/g, '') || undefined,
         externalReference: `brussels-pet-user-${user.id}`,
         notificationDisabled: false,
         address: user.logradouro || undefined,
         addressNumber: user.numero || undefined,
         complement: user.complemento || undefined,
         province: user.bairro || undefined,
-        postalCode: String(user.cep || '').replace(/\\D/g, '') || undefined,
+        postalCode: String(user.cep || '').replace(/\D/g, '') || undefined,
       });
       if (!customer.id) throw new Error('O Asaas não retornou o cadastro do cliente.');
       asaasCustomerId = customer.id;
