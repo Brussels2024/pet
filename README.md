@@ -17,7 +17,7 @@ Distribuidora B2B de produtos pet para empresas com CNPJ. Next.js (App Router, J
 | `ASAAS_WEBHOOK_TOKEN` | Token próprio para autenticar os webhooks do Asaas (não é a chave da API). |
 | `ASAAS_API_URL` | Opcional; URL base para ambiente especial/testes. |
 
-As tabelas são criadas automaticamente no primeiro acesso.
+As tabelas são criadas automaticamente no primeiro acesso. O webhook de pagamentos deve apontar para `https://SEU-DOMINIO/api/asaas/webhook` e usar um token próprio configurado em `ASAAS_WEBHOOK_TOKEN`.
 
 ## O que já tem
 
