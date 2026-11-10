@@ -1,34 +1,25 @@
 import { NextResponse } from 'next/server';
 import { isValidCnpj, lookupCnpj, onlyDigits } from '@/lib/cnpj';
+import { enforceRequestLimit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
+  if (!(await enforceRequestLimit(request, 'cnpj-lookup', 20, 60 * 60))) {
+    return NextResponse.json({ error: 'Muitas consultas. Aguarde e tente novamente.' }, { status: 429, headers: { 'Retry-After': '3600' } });
+  }
   const { cnpj: raw } = await params;
   const cnpj = onlyDigits(raw);
-
   if (!isValidCnpj(cnpj)) {
     return NextResponse.json({ error: 'CNPJ inválido. Confira os números digitados.' }, { status: 400 });
   }
-
   const result = await lookupCnpj(cnpj);
-
-  if (result.ok) {
-    return NextResponse.json({ ok: true, data: result.data });
-  }
+  if (result.ok) return NextResponse.json({ ok: true, data: result.data });
   if (result.error === 'nao_encontrado') {
-    return NextResponse.json(
-      { error: 'CNPJ não encontrado na Receita Federal.', code: 'nao_encontrado' },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: 'CNPJ não encontrado na Receita Federal.', code: 'nao_encontrado' }, { status: 404 });
   }
-  // Fonte fora do ar: não significa que a empresa não exista.
-  return NextResponse.json(
-    {
-      error:
-        'Não conseguimos consultar o CNPJ agora. Tente novamente em instantes ou continue o cadastro para aprovação manual.',
-      code: 'indisponivel',
-    },
-    { status: 503 }
-  );
+  return NextResponse.json({
+    error: 'Não conseguimos consultar o CNPJ agora. Tente novamente em instantes ou continue o cadastro para aprovação manual.',
+    code: 'indisponivel',
+  }, { status: 503 });
 }
