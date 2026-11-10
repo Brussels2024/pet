@@ -5,7 +5,7 @@ import { brl } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
-const PAYMENTS = ['pix', 'boleto', 'cartao'];
+const PAYMENTS = ['asaas'];
 
 function fail(message, status = 400) {
   return NextResponse.json({ error: message }, { status });
