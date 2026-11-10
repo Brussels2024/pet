@@ -9,7 +9,7 @@ const STATUSES = ['novo', 'confirmado', 'pago', 'enviado', 'entregue', 'cancelad
 
 export default async function PedidosPage() {
   const orders = await query(
-    `SELECT o.id, o.status, o.payment_method, o.total, o.notes, o.created_at,
+    `SELECT o.id, o.status, o.payment_method, o.total, o.notes, o.created_at, o.payment_status, o.asaas_invoice_url, o.asaas_payment_id,
             u.razao_social, u.cnpj, u.telefone, u.email
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
@@ -63,8 +63,9 @@ export default async function PedidosPage() {
               </tbody>
             </table>
             <p style={{ margin: '10px 0 0' }}>
-              <b>Total: {brl(o.total)}</b> · Pagamento: <span style={{ textTransform: 'capitalize' }}>{o.payment_method}</span>
+              <b>Total: {brl(o.total)}</b> · Pagamento: <span style={{ textTransform: 'capitalize' }}>{o.payment_method}</span> · Situação: <b>{o.payment_status || o.status}</b>
             </p>
+            {o.asaas_invoice_url && <p><a href={o.asaas_invoice_url} target="_blank" rel="noopener noreferrer"><b>Abrir cobrança no Asaas</b></a></p>}
             {o.notes && <p className="muted">Obs.: {o.notes}</p>}
           </div>
         ))
