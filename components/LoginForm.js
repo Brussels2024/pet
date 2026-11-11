@@ -72,7 +72,7 @@ export default function LoginForm({ next, scope }) {
             <label htmlFor="senha">Senha</label>
             <input id="senha" name="senha" type="password" required autoComplete="current-password" />
           </div>
-          {scope !== 'admin' && <p className="muted" style={{ textAlign: 'right', margin: '-4px 0 14px' }}><a href="/recuperar-acesso"><b>Esqueci minha senha ou e-mail</b></a></p>}
+          <p className="muted" style={{ textAlign: 'right', margin: '-4px 0 14px' }}><a href="/recuperar-acesso"><b>Esqueci minha senha ou e-mail</b></a></p>
         </>
       ) : (
         <div className="field">
