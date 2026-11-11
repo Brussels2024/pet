@@ -4,6 +4,7 @@ import { createSession } from '@/lib/auth';
 import { isValidCnpj, lookupCnpj, onlyDigits } from '@/lib/cnpj';
 import { enforceRequestLimit } from '@/lib/security';
 import { hashPassword, validatePassword } from '@/lib/passwords';
+import { encryptPii, ensurePiiSchema, phoneLookupHash } from '@/lib/pii';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,14 +53,26 @@ export async function POST(request) {
   }
 
   const pick = (key) => String(body[key] || data[key] || '').trim();
+  await ensurePiiSchema();
   const hash = await hashPassword(senha);
+  const pii = {
+    telefone: encryptPii(pick('telefone')),
+    cep: encryptPii(onlyDigits(pick('cep'))),
+    logradouro: encryptPii(pick('logradouro')),
+    numero: encryptPii(pick('numero')),
+    complemento: encryptPii(pick('complemento')),
+    bairro: encryptPii(pick('bairro')),
+    cidade: encryptPii(pick('cidade')),
+    uf: encryptPii(pick('uf').toUpperCase().slice(0, 2)),
+  };
+  const phoneHash = phoneLookupHash(pick('telefone'));
   const rows = await query(
     `INSERT INTO users
-       (email, password_hash, role, status, razao_social, nome_fantasia, cnpj, telefone,
-        cep, logradouro, numero, complemento, bairro, cidade, uf, situacao_cnpj)
+       (email, password_hash, role, status, razao_social, nome_fantasia, cnpj, situacao_cnpj,
+        telefone_enc, telefone_lookup_hash, cep_enc, logradouro_enc, numero_enc, complemento_enc, bairro_enc, cidade_enc, uf_enc)
      VALUES ($1, $2, 'cliente', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      RETURNING id`,
-    [email, hash, status, pick('razao_social'), pick('nome_fantasia'), cnpj, pick('telefone'), onlyDigits(pick('cep')), pick('logradouro'), pick('numero'), pick('complemento'), pick('bairro'), pick('cidade'), pick('uf').toUpperCase().slice(0, 2), situacao]
+    [email, hash, status, pick('razao_social'), pick('nome_fantasia'), cnpj, situacao, pii.telefone, phoneHash, pii.cep, pii.logradouro, pii.numero, pii.complemento, pii.bairro, pii.cidade, pii.uf]
   );
 
   await createSession(rows[0].id, 0, 'cliente');
