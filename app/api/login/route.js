@@ -4,26 +4,8 @@ import { createSession } from '@/lib/auth';
 import { enforceRequestLimit } from '@/lib/security';
 import { verifyPassword } from '@/lib/passwords';
 import { accountLock, clearLoginFailures, recordFailedLogin } from '@/lib/login-security';
-import { sendAccountLockedEmail } from '@/lib/mailer';
-import { randomBytes } from 'crypto';
-import { hashRecoveryValue } from '@/lib/recovery';
 
 export const dynamic = 'force-dynamic';
-
-async function createLockRecoveryLink(user) {
-  const token = randomBytes(32).toString('base64url');
-  await query('UPDATE password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [user.id]);
-  await query(
-    "INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '15 minutes')",
-    [user.id, hashRecoveryValue(token)]
-  );
-  const base = process.env.NEXT_PUBLIC_APP_URL
-    ? new URL(process.env.NEXT_PUBLIC_APP_URL).origin
-    : process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : '';
-  if (!base) throw new Error('URL pública não configurada.');
-  const link = base + '/redefinir-senha?token=' + encodeURIComponent(token);
-  return link;
-}
 
 export async function POST(request) {
   let body;
@@ -59,7 +41,7 @@ export async function POST(request) {
   const lockedUntil = await accountLock(user.id);
   if (lockedUntil) {
     return NextResponse.json(
-      { error: 'Conta bloqueada por 5 minutos após três tentativas de senha incorreta. Confira seu e-mail cadastrado para receber o aviso de segurança.' },
+      { error: 'Conta bloqueada por 5 minutos após três tentativas de senha incorreta. Aguarde o desbloqueio para tentar novamente.' },
       { status: 401 }
     );
   }
@@ -67,25 +49,9 @@ export async function POST(request) {
   const passwordOk = await verifyPassword(senha, user.password_hash);
   if (!passwordOk) {
     const result = await recordFailedLogin(user.id);
-    if (result.should_notify) {
-      let recoveryLink = '';
-      try {
-        recoveryLink = await createLockRecoveryLink(user);
-      } catch (error) {
-        console.error('Falha ao criar link de recuperação:', error);
-      }
-
-      if (recoveryLink) {
-        try {
-          await sendAccountLockedEmail({ to: user.email, link: recoveryLink });
-        } catch (error) {
-          console.error('Falha ao enviar alerta de bloqueio para a conta:', error);
-        }
-      }
-    }
     if (result.locked_until) {
       return NextResponse.json(
-        { error: 'Conta bloqueada por 5 minutos após três tentativas de senha incorreta. Confira seu e-mail cadastrado para receber o aviso de segurança.' },
+        { error: 'Conta bloqueada por 5 minutos após três tentativas de senha incorreta. Aguarde o desbloqueio para tentar novamente.' },
         { status: 401 }
       );
     }
