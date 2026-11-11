@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { maskEmail } from '@/lib/recovery';
 import { enforceRequestLimit } from '@/lib/security';
+import { ensurePiiSchema, phoneLookupHash } from '@/lib/pii';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,12 +24,16 @@ export async function POST(request) {
     return NextResponse.json({ message: 'Não foi possível confirmar os dados. Aguarde e tente novamente.' }, { status: 429, headers: { 'Retry-After': '3600' } });
   }
 
-  const rows = await query(
-    'SELECT email FROM users ' +
-    "WHERE regexp_replace(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1 " +
-    "AND regexp_replace(COALESCE(telefone, ''), '[^0-9]', '', 'g') = $2 LIMIT 1",
-    [cnpj, telefone]
-  );
+  await ensurePiiSchema();
+  const rows = process.env.PII_ENCRYPTION_KEY
+    ? await query(
+        "SELECT email FROM users WHERE regexp_replace(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1 AND (telefone_lookup_hash = $2 OR regexp_replace(COALESCE(telefone, ''), '[^0-9]', '', 'g') = $3) LIMIT 1",
+        [cnpj, phoneLookupHash(telefone), telefone]
+      )
+    : await query(
+        "SELECT email FROM users WHERE regexp_replace(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1 AND regexp_replace(COALESCE(telefone, ''), '[^0-9]', '', 'g') = $2 LIMIT 1",
+        [cnpj, telefone]
+      );
   if (!rows[0]) {
     return NextResponse.json({ message: 'Não foi possível confirmar os dados. Confira as informações ou fale com o suporte.' });
   }
