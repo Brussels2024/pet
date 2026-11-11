@@ -6,10 +6,11 @@ import { verifyPassword } from '@/lib/passwords';
 import { accountLock, clearLoginFailures, recordFailedLogin } from '@/lib/login-security';
 import { sendAccountLockedEmail, sendSecurityAlertEmail } from '@/lib/mailer';
 import { randomBytes } from 'crypto';
+import { hashRecoveryValue } from '@/lib/recovery';
 
 export const dynamic = 'force-dynamic';
 
-async function sendLockRecovery(user) {
+async function createLockRecoveryLink(user) {
   const token = randomBytes(32).toString('base64url');
   await query('UPDATE password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL', [user.id]);
   await query(
@@ -21,7 +22,6 @@ async function sendLockRecovery(user) {
     : process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : '';
   if (!base) throw new Error('URL pública não configurada.');
   const link = base + '/redefinir-senha?token=' + encodeURIComponent(token);
-  await sendAccountLockedEmail({ to: user.email, link });
   return link;
 }
 
@@ -48,7 +48,7 @@ export async function POST(request) {
   );
 
   const rows = await query(
-    'SELECT id, email, password_hash, role, status, session_version FROM users WHERE email = $1 LIMIT 1',
+    'SELECT id, email, password_hash, role, status, session_version, nome_fantasia, razao_social FROM users WHERE email = $1 LIMIT 1',
     [email]
   );
   const user = rows[0];
@@ -68,18 +68,42 @@ export async function POST(request) {
   if (!passwordOk) {
     const result = await recordFailedLogin(user.id);
     if (result.should_notify) {
+      let recoveryLink = '';
       try {
-        const link = await sendLockRecovery(user);
-        const admins = await query("SELECT email FROM users WHERE role = 'admin' AND status = 'ativo' AND email <> $1", [user.email]);
-        const recipients = admins.map((admin) => admin.email).filter(Boolean);
-        const alertRecipients = recipients.length ? recipients : [process.env.SECURITY_ALERT_EMAIL || 'contato.brussels@gmail.com'];
-        await sendSecurityAlertEmail({
-          to: alertRecipients,
-          accountEmail: user.email,
-          accountName: user.nome_fantasia || user.razao_social || user.email,
-          accountType: user.role === 'admin' ? 'Administrador' : 'Cliente',
+        recoveryLink = await createLockRecoveryLink(user);
+      } catch (error) {
+        console.error('Falha ao criar link de recuperação:', error);
+      }
+
+      if (recoveryLink) {
+        const accountEmailPromise = sendAccountLockedEmail({ to: user.email, link: recoveryLink });
+        const adminAlertPromise = (async () => {
+          const admins = await query("SELECT email FROM users WHERE role = 'admin' AND status = 'ativo' AND email <> $1", [user.email]);
+          const recipients = admins.map((admin) => admin.email).filter(Boolean);
+          const alertRecipients = recipients.length ? recipients : [process.env.SECURITY_ALERT_EMAIL || 'contato.brussels@gmail.com'];
+          return sendSecurityAlertEmail({
+            to: alertRecipients,
+            accountEmail: user.email,
+            accountName: user.nome_fantasia || user.razao_social || user.email,
+            accountType: user.role === 'admin' ? 'Administrador' : 'Cliente',
+          });
+        })();
+        const results = await Promise.allSettled([accountEmailPromise, adminAlertPromise]);
+        results.forEach((item) => {
+          if (item.status === 'rejected') console.error('Falha ao enviar alerta de bloqueio:', item.reason);
         });
-      } catch (error) { console.error('Falha ao enviar alerta de bloqueio:', error); }
+      } else {
+        try {
+          const admins = await query("SELECT email FROM users WHERE role = 'admin' AND status = 'ativo' AND email <> $1", [user.email]);
+          const recipients = admins.map((admin) => admin.email).filter(Boolean);
+          await sendSecurityAlertEmail({
+            to: recipients.length ? recipients : [process.env.SECURITY_ALERT_EMAIL || 'contato.brussels@gmail.com'],
+            accountEmail: user.email,
+            accountName: user.nome_fantasia || user.razao_social || user.email,
+            accountType: user.role === 'admin' ? 'Administrador' : 'Cliente',
+          });
+        } catch (error) { console.error('Falha ao enviar alerta administrativo:', error); }
+      }
     }
     if (result.locked_until) {
       return NextResponse.json(
