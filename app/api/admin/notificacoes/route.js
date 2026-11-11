@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getUser } from '@/lib/auth';
+import { getAdminUser } from '@/lib/auth';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
-  const user = await getUser();
-  if (!user || user.role !== 'admin' || user.status !== 'ativo') {
+  const user = await getAdminUser();
+  if (!user || user.status !== 'ativo') {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
   }
   const url = new URL(request.url);
