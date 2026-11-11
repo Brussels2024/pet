@@ -92,6 +92,26 @@ export async function POST(request) {
     return fail('Este pedido já foi iniciado e está em conferência do pagamento. Não refaça a compra; entre em contato com a Brussels Pet informando o pedido #' + order.id + '.', 409);
   }
 
+  const shippingAddress = body.shippingAddress || {};
+  const requiredAddress = ['cep','logradouro','numero','bairro','cidade','uf'];
+  if (requiredAddress.some((key) => !String(shippingAddress[key] || '').trim())) return fail('Informe o endereço completo de entrega.');
+  const cityRows = await query('SELECT city, uf FROM shipping_cities WHERE free_shipping = true');
+  const normalizeCity = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR');
+  const freeShipping = cityRows.some((city) => normalizeCity(city.city) === normalizeCity(shippingAddress.cidade) && String(city.uf).toUpperCase() === String(shippingAddress.uf).trim().toUpperCase());
+  if (!freeShipping) return fail('Sua cidade não está na lista de frete grátis. Consulte o frete pelo WhatsApp.', 422);
+  const cleanAddress = {
+    cep: String(shippingAddress.cep).replace(/\D/g, '').slice(0, 8),
+    logradouro: String(shippingAddress.logradouro).trim().slice(0, 180),
+    numero: String(shippingAddress.numero).trim().slice(0, 30),
+    complemento: String(shippingAddress.complemento || '').trim().slice(0, 100),
+    bairro: String(shippingAddress.bairro).trim().slice(0, 100),
+    cidade: String(shippingAddress.cidade).trim().slice(0, 100),
+    uf: String(shippingAddress.uf).trim().toUpperCase().slice(0, 2),
+  };
+  if (cleanAddress.cep.length !== 8 || cleanAddress.uf.length !== 2) return fail('Confira o CEP e a UF do endereço.');
+  await query('UPDATE users SET cep=$1, logradouro=$2, numero=$3, complemento=$4, bairro=$5, cidade=$6, uf=$7 WHERE id=$8',
+    [cleanAddress.cep, cleanAddress.logradouro, cleanAddress.numero, cleanAddress.complemento, cleanAddress.bairro, cleanAddress.cidade, cleanAddress.uf, user.id]);
+
   const wanted = Array.isArray(body.items) ? body.items : [];
   const qtyById = new Map();
   for (const item of wanted) {
@@ -159,8 +179,8 @@ export async function POST(request) {
          RETURNING p.id
        ),
        new_order AS (
-         INSERT INTO orders (user_id, status, payment_method, total, shipping, notes, payment_status, checkout_key)
-         SELECT $3, 'novo', 'asaas', e.amount, 0, $4, 'PENDING', $5
+         INSERT INTO orders (user_id, status, payment_method, total, shipping, notes, payment_status, checkout_key, shipping_address)
+         SELECT $3, 'novo', 'asaas', e.amount, 0, $4, 'PENDING', $5, $6::jsonb
            FROM eligible e
           WHERE e.total = e.available AND (SELECT COUNT(*) FROM reserved) = e.total
          RETURNING id
@@ -173,7 +193,7 @@ export async function POST(request) {
        )
        SELECT o.id, e.total, e.available, e.amount, (SELECT COUNT(*)::int FROM new_items) AS item_count
          FROM eligible e LEFT JOIN new_order o ON true`,
-      [ids, quantities, user.id, String(body.notes || '').slice(0, 500), checkoutKey]
+      [ids, quantities, user.id, String(body.notes || '').slice(0, 500), checkoutKey, JSON.stringify(cleanAddress)]
     );
     const row = created[0];
     if (!row?.id) return fail('O estoque mudou durante a finalização. Atualize o carrinho e tente novamente.', 409);
