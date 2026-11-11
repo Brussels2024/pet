@@ -4,8 +4,6 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Brussels Pet';
   const options = {
     body: data.body || 'Você tem uma nova atualização na loja.',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
     tag: data.tag || 'brussels-pet-admin',
     data: { url: data.url || '/admin' },
     renotify: true,
