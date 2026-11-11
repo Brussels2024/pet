@@ -2,20 +2,23 @@ import { query } from '@/lib/db';
 import { brl, dateTimeBr } from '@/lib/format';
 import { formatCnpj } from '@/lib/cnpj';
 import { setOrderStatus } from '../actions';
+import { decryptUserPii, decryptOrderAddress, ensurePiiSchema } from '@/lib/pii';
 
 export const dynamic = 'force-dynamic';
 
 const STATUSES = ['novo', 'confirmado', 'pago', 'enviado', 'entregue', 'cancelado'];
 
 export default async function PedidosPage() {
-  const orders = await query(
+  await ensurePiiSchema();
+  const rawOrders = await query(
     `SELECT o.id, o.status, o.payment_method, o.total, o.notes, o.created_at,
-            u.razao_social, u.cnpj, u.telefone, u.email, o.shipping_address
+            u.razao_social, u.cnpj, u.telefone, u.telefone_enc, u.email, o.shipping_address, o.shipping_address_enc
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        ORDER BY o.id DESC
        LIMIT 100`
   );
+  const orders = await Promise.all(rawOrders.map(async (order) => ({ ...await decryptUserPii(order), shipping_address: decryptOrderAddress(order.shipping_address_enc, order.shipping_address) })));
   const items = orders.length
     ? await query(
         'SELECT order_id, name, price, qty FROM order_items WHERE order_id = ANY($1::int[]) ORDER BY id',
