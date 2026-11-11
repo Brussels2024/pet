@@ -20,7 +20,7 @@ export default async function ContaPage({ searchParams }) {
   const novoPedido = sp?.pedido ? Number(sp.pedido) : null;
 
   const orders = await query(
-    'SELECT id, status, payment_method, total, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50',
+    'SELECT id, status, payment_method, total, shipping_address, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50',
     [user.id]
   );
 
@@ -69,7 +69,7 @@ export default async function ContaPage({ searchParams }) {
                   <td>{dateTimeBr(o.created_at)}</td>
                   <td style={{ textTransform: 'capitalize' }}>{o.payment_method}</td>
                   <td>{brl(o.total)}</td>
-                  <td>{o.status}</td>
+                  <td>{o.status}{o.shipping_address && <details style={{marginTop:6}}><summary>Endereço de entrega</summary><small>{o.shipping_address.logradouro}, nº {o.shipping_address.numero}{o.shipping_address.complemento ? ' - '+o.shipping_address.complemento : ''}<br/>{o.shipping_address.bairro} · {o.shipping_address.cidade}/{o.shipping_address.uf}<br/>CEP: {o.shipping_address.cep}<br/>Telefone: {o.shipping_address.telefone || user.telefone || 'Não informado'}</small></details>}</td>
                 </tr>
               ))}
             </tbody>

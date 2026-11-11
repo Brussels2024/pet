@@ -10,7 +10,7 @@ const STATUSES = ['novo', 'confirmado', 'pago', 'enviado', 'entregue', 'cancelad
 export default async function PedidosPage() {
   const orders = await query(
     `SELECT o.id, o.status, o.payment_method, o.total, o.notes, o.created_at,
-            u.razao_social, u.cnpj, u.telefone, u.email
+            u.razao_social, u.cnpj, u.telefone, u.email, o.shipping_address
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        ORDER BY o.id DESC
@@ -65,6 +65,7 @@ export default async function PedidosPage() {
             <p style={{ margin: '10px 0 0' }}>
               <b>Total: {brl(o.total)}</b> · Pagamento: <span style={{ textTransform: 'capitalize' }}>{o.payment_method}</span>
             </p>
+            {o.shipping_address && <div className="msg"><b>Endereço de entrega</b><br />{o.shipping_address.logradouro}, nº {o.shipping_address.numero}{o.shipping_address.complemento ? ' - ' + o.shipping_address.complemento : ''}<br />{o.shipping_address.bairro} · {o.shipping_address.cidade}/{o.shipping_address.uf}<br />CEP: {o.shipping_address.cep}<br />Telefone: {o.shipping_address.telefone || o.telefone || 'Não informado'}</div>}
             {o.notes && <p className="muted">Obs.: {o.notes}</p>}
           </div>
         ))

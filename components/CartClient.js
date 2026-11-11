@@ -8,10 +8,10 @@ const brl = (n) => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency',
 export default function CartClient({ minOrder, status }) {
   const [cart, setCart] = useState([]);
   const [ready, setReady] = useState(false);
-  const [payment, setPayment] = useState('pix');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [checkoutKey, setCheckoutKey] = useState('');
 
   useEffect(() => {
     try {
@@ -24,6 +24,7 @@ export default function CartClient({ minOrder, status }) {
 
   function save(next) {
     setCart(next);
+    setCheckoutKey('');
     try {
       localStorage.setItem('bp_cart', JSON.stringify(next));
       window.dispatchEvent(new Event('cart-changed'));
@@ -41,32 +42,9 @@ export default function CartClient({ minOrder, status }) {
   const total = cart.reduce((sum, i) => sum + Number(i.price) * i.qty, 0);
   const belowMin = total < minOrder;
 
-  async function finish() {
-    setError('');
-    setBusy(true);
-    try {
-      const res = await fetch('/api/pedidos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: cart.map((i) => ({ id: i.id, qty: i.qty })),
-          payment,
-          notes,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Não foi possível finalizar o pedido.');
-        setBusy(false);
-        return;
-      }
-      localStorage.removeItem('bp_cart');
-      window.dispatchEvent(new Event('cart-changed'));
-      window.location.href = `/conta?pedido=${data.orderId}`;
-    } catch {
-      setError('Erro de conexão. Tente novamente.');
-      setBusy(false);
-    }
+  function finish() {
+    try { sessionStorage.setItem('bp_checkout_notes', notes); } catch {}
+    window.location.href = '/frete';
   }
 
   if (!ready) return null;
@@ -125,12 +103,8 @@ export default function CartClient({ minOrder, status }) {
         )}
 
         <div className="field">
-          <label htmlFor="pay">Forma de pagamento</label>
-          <select id="pay" value={payment} onChange={(e) => setPayment(e.target.value)}>
-            <option value="pix">Pix</option>
-            <option value="boleto">Boleto</option>
-            <option value="cartao">Cartão</option>
-          </select>
+          <label>Pagamento</label>
+          <p className="muted">Pagamento seguro pelo Asaas. Na próxima etapa, você poderá escolher uma das modalidades habilitadas na conta: Pix, boleto ou cartão de crédito.</p>
         </div>
         <div className="field">
           <label htmlFor="notes">Observações</label>
@@ -155,7 +129,7 @@ export default function CartClient({ minOrder, status }) {
           disabled={busy || belowMin || status !== 'ok'}
           style={{ width: '100%' }}
         >
-          {busy ? 'Enviando...' : 'Finalizar pedido'}
+          {busy ? 'Gerando pagamento...' : 'Confirmar compra e calcular frete'}
         </button>
       </div>
     </>
