@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
-import { randomInt } from 'crypto';
 import { query } from '@/lib/db';
 import { createSession } from '@/lib/auth';
 import { enforceRequestLimit } from '@/lib/security';
 import { verifyPassword } from '@/lib/passwords';
-import { accountLock, clearLoginFailures, createAdminChallenge, recordFailedLogin } from '@/lib/login-security';
-import { sendAdminVerificationCode } from '@/lib/twilio';
-import { sendAccountLockedEmail } from '@/lib/mailer';
+import { accountLock, clearLoginFailures, recordFailedLogin } from '@/lib/login-security';
+import { sendAccountLockedEmail, sendSecurityAlertEmail } from '@/lib/mailer';
 import { randomBytes } from 'crypto';
-import { hashRecoveryValue } from '@/lib/recovery';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,10 +20,9 @@ async function sendLockRecovery(user) {
     ? new URL(process.env.NEXT_PUBLIC_APP_URL).origin
     : process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : '';
   if (!base) throw new Error('URL pública não configurada.');
-  await sendAccountLockedEmail({
-    to: user.email,
-    link: base + '/redefinir-senha?token=' + encodeURIComponent(token),
-  });
+  const link = base + '/redefinir-senha?token=' + encodeURIComponent(token);
+  await sendAccountLockedEmail({ to: user.email, link });
+  return link;
 }
 
 export async function POST(request) {
@@ -72,8 +68,18 @@ export async function POST(request) {
   if (!passwordOk) {
     const result = await recordFailedLogin(user.id);
     if (result.should_notify) {
-      try { await sendLockRecovery(user); }
-      catch (error) { console.error('Falha ao enviar alerta de bloqueio:', error); }
+      try {
+        const link = await sendLockRecovery(user);
+        const admins = await query("SELECT email FROM users WHERE role = 'admin' AND status = 'ativo' AND email <> $1", [user.email]);
+        const recipients = admins.map((admin) => admin.email).filter(Boolean);
+        const alertRecipients = recipients.length ? recipients : [process.env.SECURITY_ALERT_EMAIL || 'contato.brussels@gmail.com'];
+        await sendSecurityAlertEmail({
+          to: alertRecipients,
+          accountEmail: user.email,
+          accountName: user.nome_fantasia || user.razao_social || user.email,
+          accountType: user.role === 'admin' ? 'Administrador' : 'Cliente',
+        });
+      } catch (error) { console.error('Falha ao enviar alerta de bloqueio:', error); }
     }
     if (result.locked_until) {
       return NextResponse.json(
@@ -90,27 +96,6 @@ export async function POST(request) {
 
   await clearLoginFailures(user.id);
 
-  if (adminLogin) {
-    const code = String(randomInt(0, 1000000)).padStart(6, '0');
-    const challenge = await createAdminChallenge(user.id, code);
-    try {
-      await sendAdminVerificationCode(code);
-    } catch (error) {
-      await query('UPDATE admin_mfa_challenges SET used_at = now() WHERE challenge_hash = $1 AND used_at IS NULL', [hashRecoveryValue(challenge)]);
-      console.error('Falha no envio do código administrativo:', error);
-      return NextResponse.json({ error: 'Não foi possível enviar o código de segurança. O acesso não foi liberado. Tente novamente mais tarde.' }, { status: 503 });
-    }
-    const response = NextResponse.json({ ok: true, mfa_required: true });
-    response.cookies.set('bp_admin_mfa', challenge, {
-      httpOnly: true,
-      sameSite: 'strict',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/api/login',
-      maxAge: 300,
-    });
-    return response;
-  }
-
-  await createSession(user.id, user.session_version, 'cliente');
+  await createSession(user.id, user.session_version, user.role);
   return NextResponse.json({ ok: true, role: user.role });
 }
