@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import { createSession } from '@/lib/auth';
 import { enforceRequestLimit } from '@/lib/security';
+import { verifyPassword } from '@/lib/passwords';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,7 @@ export async function POST(request) {
   const email = String(body.email || '').trim().toLowerCase();
   const senha = String(body.senha || '');
   const adminLogin = body.scope === 'admin';
-  if (email.length > 254 || senha.length > 72 || !email) {
+  if (email.length > 254 || !email || senha.length > 4096) {
     return NextResponse.json({ error: 'E-mail ou senha incorretos.' }, { status: 401 });
   }
 
@@ -43,7 +43,7 @@ export async function POST(request) {
     [email]
   );
   const user = rows[0];
-  const passwordOk = user ? await bcrypt.compare(senha, user.password_hash) : false;
+  const passwordOk = user ? await verifyPassword(senha, user.password_hash) : false;
 
   if (!user || !passwordOk || (adminLogin && user.role !== 'admin') || user.status === 'bloqueado') {
     return NextResponse.json({ error: 'E-mail ou senha incorretos.' }, { status: 401 });
