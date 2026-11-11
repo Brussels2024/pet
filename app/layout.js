@@ -25,7 +25,12 @@ export default async function RootLayout({ children }) {
           header={<Header />}
           footer={
             <footer className="site-footer">
-              <div className="wrap">Brussels Pet · Since 2024 · Venda exclusiva para empresas (CNPJ)</div>
+              <div className="wrap">
+                Brussels Pet · Since 2024 · Venda exclusiva para empresas (CNPJ)
+                <span style={{ display: 'block', marginTop: 6 }}>
+                  Suporte: <a href="mailto:contato.brussels@gmail.com">contato.brussels@gmail.com</a>
+                </span>
+              </div>
             </footer>
           }
           whatsapp={whatsapp}
