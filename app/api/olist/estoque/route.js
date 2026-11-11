@@ -10,21 +10,17 @@ function safeEqual(received, expected) {
   return a.length > 0 && a.length === b.length && timingSafeEqual(a, b);
 }
 
-// Adaptador interno temporário: SKU + saldo absoluto.
-// O formato nativo da Olist será conectado após a conta e o contrato da API V3.
+// Adaptador temporário: recebe SKU e saldo absoluto. O payload oficial Olist V3
+// será mapeado quando houver acesso à aplicação e ao contrato da conta.
 export async function POST(request) {
   const expected = process.env.OLIST_WEBHOOK_TOKEN;
-  if (!expected) {
-    return NextResponse.json({ error: 'Integração Olist ainda não configurada.' }, { status: 503 });
-  }
+  if (!expected) return NextResponse.json({ error: 'Integração Olist ainda não configurada.' }, { status: 503 });
   if (!safeEqual(request.headers.get('x-olist-webhook-token'), expected)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
   }
 
   let body;
-  try {
-    body = await request.json();
-  } catch {
+  try { body = await request.json(); } catch {
     return NextResponse.json({ error: 'JSON inválido.' }, { status: 400 });
   }
 
@@ -38,24 +34,49 @@ export async function POST(request) {
     sku: String(item?.sku || '').trim(),
     stock: Number(item?.stock),
   }));
-  if (normalized.some((item) => !item.sku || !Number.isSafeInteger(item.stock) || item.stock < 0)) {
-    return NextResponse.json({ error: 'Todos os itens precisam ter SKU e estoque inteiro não negativo.' }, { status: 400 });
+  const skuSet = new Set(normalized.map((item) => item.sku));
+  if (normalized.some((item) => !item.sku || !Number.isSafeInteger(item.stock) || item.stock < 0) || skuSet.size !== normalized.length) {
+    return NextResponse.json({ error: 'Cada item precisa ter SKU único e estoque inteiro não negativo.' }, { status: 400 });
   }
 
-  const inserted = await query(
-    'INSERT INTO olist_stock_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING event_id',
-    [eventId]
+  const skus = normalized.map((item) => item.sku);
+  const stocks = normalized.map((item) => item.stock);
+  const result = await query(
+    `WITH incoming AS (
+       SELECT * FROM unnest($2::text[], $3::int[]) AS i(sku, stock)
+     ),
+     mapped AS (
+       SELECT p.id, i.stock
+         FROM incoming i JOIN products p ON p.sku = i.sku
+     ),
+     validation AS (
+       SELECT (SELECT COUNT(*) FROM incoming)::int AS received,
+              (SELECT COUNT(*) FROM mapped)::int AS matched
+     ),
+     accepted AS (
+       INSERT INTO olist_stock_events (event_id)
+       SELECT $1 FROM validation v WHERE v.received = v.matched
+       ON CONFLICT (event_id) DO NOTHING
+       RETURNING event_id
+     ),
+     updated AS (
+       UPDATE products p SET stock = m.stock
+         FROM mapped m
+        WHERE p.id = m.id AND EXISTS (SELECT 1 FROM accepted)
+       RETURNING p.id
+     )
+     SELECT v.received, v.matched,
+            EXISTS(SELECT 1 FROM accepted) AS accepted,
+            (SELECT COUNT(*)::int FROM updated) AS updated_count,
+            EXISTS(SELECT 1 FROM olist_stock_events WHERE event_id = $1) AS event_exists
+       FROM validation v`,
+    [eventId, skus, stocks]
   );
-  if (!inserted.length) return NextResponse.json({ received: true, duplicate: true });
 
-  let updated = 0;
-  for (const item of normalized) {
-    const rows = await query(
-      'UPDATE products SET stock = $1 WHERE sku = $2 RETURNING id',
-      [item.stock, item.sku]
-    );
-    updated += rows.length;
+  const row = result[0];
+  if (row.received !== row.matched) {
+    return NextResponse.json({ error: 'Um ou mais SKUs não estão cadastrados na Brussels Pet. Nenhum estoque foi alterado.', receivedProducts: row.received, matchedProducts: row.matched }, { status: 422 });
   }
-
-  return NextResponse.json({ received: true, updated, receivedProducts: normalized.length });
+  if (!row.accepted) return NextResponse.json({ received: true, duplicate: true });
+  return NextResponse.json({ received: true, updated: row.updated_count, receivedProducts: row.received });
 }
