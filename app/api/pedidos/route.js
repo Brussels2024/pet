@@ -106,7 +106,8 @@ export async function POST(request) {
     complemento: String(shippingAddress.complemento || '').trim().slice(0, 100),
     bairro: String(shippingAddress.bairro).trim().slice(0, 100),
     cidade: String(shippingAddress.cidade).trim().slice(0, 100),
-    uf: String(shippingAddress.uf).trim().toUpperCase().slice(0, 2),\n    telefone: String(user.telefone || '').trim().slice(0, 30),
+    uf: String(shippingAddress.uf).trim().toUpperCase().slice(0, 2),
+    telefone: String(user.telefone || '').trim().slice(0, 30),
   };
   if (cleanAddress.cep.length !== 8 || cleanAddress.uf.length !== 2) return fail('Confira o CEP e a UF do endereço.');
   await query('UPDATE users SET cep=$1, logradouro=$2, numero=$3, complemento=$4, bairro=$5, cidade=$6, uf=$7 WHERE id=$8',
