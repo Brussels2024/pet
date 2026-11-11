@@ -18,6 +18,12 @@ export default async function ConfiguracoesPage() {
         <Link className="btn" href="/admin/configuracoes/categorias">Gerenciar categorias</Link>
       </div>
 
+      <div className="card" style={{ maxWidth: 560, marginBottom: 20 }}>
+        <h2 style={{ marginTop: 0 }}>Frete grátis por cidade</h2>
+        <p className="muted">Ative somente as cidades que terão frete grátis. Nas demais, o cliente consulta o valor pelo WhatsApp.</p>
+        <Link className="btn" href="/admin/configuracoes/frete">Gerenciar cidades</Link>
+      </div>
+
       <form action={saveSettings} className="card" style={{ maxWidth: 560 }}>
         <h2 style={{ marginTop: 0 }}>Loja</h2>
         <div className="field">
