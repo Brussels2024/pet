@@ -42,39 +42,9 @@ export default function CartClient({ minOrder, status }) {
   const total = cart.reduce((sum, i) => sum + Number(i.price) * i.qty, 0);
   const belowMin = total < minOrder;
 
-  async function finish() {
-    setError('');
-    setBusy(true);
-    const requestKey = checkoutKey || crypto.randomUUID();
-    if (!checkoutKey) setCheckoutKey(requestKey);
-    try {
-      const res = await fetch('/api/pedidos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: cart.map((i) => ({ id: i.id, qty: i.qty })),
-          notes,
-          checkoutKey: requestKey,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Não foi possível finalizar o pedido.');
-        setBusy(false);
-        return;
-      }
-      if (!data.invoiceUrl) {
-        setError('O pedido foi criado, mas o link de pagamento não foi recebido. Entre em contato com a Brussels Pet antes de tentar novamente.');
-        setBusy(false);
-        return;
-      }
-      localStorage.removeItem('bp_cart');
-      window.dispatchEvent(new Event('cart-changed'));
-      window.location.href = data.invoiceUrl;
-    } catch {
-      setError('Erro de conexão. Tente novamente.');
-      setBusy(false);
-    }
+  function finish() {
+    try { sessionStorage.setItem('bp_checkout_notes', notes); } catch {}
+    window.location.href = '/frete';
   }
 
   if (!ready) return null;
@@ -159,7 +129,7 @@ export default function CartClient({ minOrder, status }) {
           disabled={busy || belowMin || status !== 'ok'}
           style={{ width: '100%' }}
         >
-          {busy ? 'Gerando pagamento...' : 'Continuar para pagamento'}
+          {busy ? 'Gerando pagamento...' : 'Confirmar compra e calcular frete'}
         </button>
       </div>
     </>
