@@ -62,10 +62,9 @@ export async function POST(request) {
 
   const lockedUntil = await accountLock(user.id);
   if (lockedUntil) {
-    const seconds = Math.max(1, Math.ceil((new Date(lockedUntil).getTime() - Date.now()) / 1000));
     return NextResponse.json(
-      { error: 'Sua conta está temporariamente bloqueada após três tentativas incorretas. Confira seu e-mail para recuperar o acesso.' },
-      { status: 423, headers: { 'Retry-After': String(seconds) } }
+      { error: 'E-mail ou senha incorretos. Se sua conta estiver bloqueada, confira o e-mail cadastrado.' },
+      { status: 401 }
     );
   }
 
@@ -78,8 +77,8 @@ export async function POST(request) {
     }
     if (result.locked_until) {
       return NextResponse.json(
-        { error: 'Três tentativas incorretas. A conta foi bloqueada por 15 minutos. Enviamos um aviso ao e-mail cadastrado.' },
-        { status: 423, headers: { 'Retry-After': '900' } }
+        { error: 'E-mail ou senha incorretos. Se sua conta estiver bloqueada, confira o e-mail cadastrado.' },
+        { status: 401 }
       );
     }
     return NextResponse.json({ error: 'E-mail ou senha incorretos.' }, { status: 401 });
