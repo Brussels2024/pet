@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import { hashRecoveryValue } from '@/lib/recovery';
 import { enforceRequestLimit } from '@/lib/security';
+import { clearLoginFailures } from '@/lib/login-security';
+import { hashPassword, validatePassword } from '@/lib/passwords';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,20 +21,19 @@ export async function POST(request) {
 
   const token = String(body.token || '');
   const senha = String(body.senha || '');
-  if (token.length < 30 || token.length > 200 || senha.length < 12 || Buffer.byteLength(senha, 'utf8') > 72) {
-    return NextResponse.json({ error: 'Link inválido ou senha fora do tamanho permitido (12 a 72 bytes).' }, { status: 400 });
+  const passwordError = validatePassword(senha);
+  if (token.length < 30 || token.length > 200 || passwordError) {
+    return NextResponse.json({ error: passwordError || 'Link inválido. Solicite outro.' }, { status: 400 });
   }
 
-  const passwordHash = await bcrypt.hash(senha, 12);
+  const passwordHash = await hashPassword(senha);
   const changed = await query(
     `WITH consumed AS (
        UPDATE password_resets SET used_at = now()
        WHERE id = (
          SELECT id FROM password_resets
          WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
-         ORDER BY created_at DESC
-         LIMIT 1
-         FOR UPDATE SKIP LOCKED
+         ORDER BY created_at DESC LIMIT 1 FOR UPDATE SKIP LOCKED
        )
        AND used_at IS NULL AND expires_at > now()
        RETURNING user_id
@@ -44,8 +44,8 @@ export async function POST(request) {
      RETURNING id`,
     [hashRecoveryValue(token), passwordHash]
   );
-  if (!changed.length) {
-    return NextResponse.json({ error: 'Este link expirou ou já foi utilizado. Solicite outro.' }, { status: 400 });
-  }
+  if (!changed.length) return NextResponse.json({ error: 'Este link expirou ou já foi utilizado. Solicite outro.' }, { status: 400 });
+
+  await clearLoginFailures(changed[0].id);
   return NextResponse.json({ ok: true });
 }
