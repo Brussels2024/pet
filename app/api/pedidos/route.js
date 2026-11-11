@@ -45,6 +45,12 @@ async function checkoutResponse(orderId, payment) {
     `UPDATE orders SET asaas_payment_id = $1, asaas_invoice_url = $2, payment_status = $3 WHERE id = $4`,
     [payment.id, invoiceUrl, payment.status || 'PENDING', orderId]
   );
+  await query(
+    `INSERT INTO admin_notifications (order_id, event_type)
+     VALUES ($1, 'checkout_pending')
+     ON CONFLICT (order_id, event_type) DO NOTHING`,
+    [orderId]
+  );
   return NextResponse.json({ ok: true, orderId, invoiceUrl });
 }
 
