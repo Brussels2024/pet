@@ -2,15 +2,18 @@ import { query } from '@/lib/db';
 import { formatCnpj } from '@/lib/cnpj';
 import { dateBr } from '@/lib/format';
 import { setUserStatus } from '../actions';
+import { decryptUserPii, ensurePiiSchema } from '@/lib/pii';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ClientesPage() {
-  const users = await query(
-    `SELECT id, email, status, razao_social, nome_fantasia, cnpj, telefone, cidade, uf, situacao_cnpj, created_at
+  await ensurePiiSchema();
+  const rawUsers = await query(
+    `SELECT id, email, status, razao_social, nome_fantasia, cnpj, telefone, cidade, uf, situacao_cnpj, created_at, telefone_enc, cidade_enc, uf_enc
        FROM users WHERE role = 'cliente'
        ORDER BY (status = 'pendente') DESC, id DESC`
   );
+  const users = await Promise.all(rawUsers.map((user) => decryptUserPii(user)));
 
   return (
     <>
