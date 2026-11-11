@@ -51,7 +51,7 @@ export default function ShippingClient({user,freeCities,whatsapp}){
    <div className="field"><label>UF</label><input value={address.uf} maxLength={2} onChange={e=>set('uf',e.target.value.toUpperCase())}/></div>
   </div>
   <div className="field"><label>Telefone para contato</label><input value={user.telefone||''} readOnly/></div>
-  <div className={isFree?'msg ok':'msg warn'}>{isFree?'Sua cidade possui frete grátis.':'Frete sob consulta. O WhatsApp será aberto com o endereço e os produtos preenchidos.'}</div>
+  <div className={isFree?'msg ok':'msg warn'}>{isFree?'Sua cidade possui frete grátis! Prazo de entrega: até 7 dias úteis após a confirmação do pagamento.':'Frete sob consulta. O WhatsApp será aberto com o endereço e os produtos preenchidos.'}</div>
   <p><b>Total dos produtos: {brl(total)}</b></p>{error&&<div className="msg error">{error}</div>}
   <button type="button" className="btn" disabled={busy||!cart.length} onClick={isFree?pay:quote} style={{width:'100%'}}>{busy?'Gerando pagamento...':isFree?'Seguir para pagamento':'Consultar frete pelo WhatsApp'}</button>
  </div>;
