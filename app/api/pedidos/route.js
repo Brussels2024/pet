@@ -177,6 +177,16 @@ export async function POST(request) {
     const row = created[0];
     if (!row?.id) return fail('O estoque mudou durante a finalização. Atualize o carrinho e tente novamente.', 409);
     const orderId = row.id;
+
+    // Avisar o administrador assim que o cliente confirma o pedido,
+    // sem esperar a criação ou confirmação do pagamento no Asaas.
+    await query(
+      `INSERT INTO admin_notifications (order_id, event_type)
+       VALUES ($1, 'checkout_pending')
+       ON CONFLICT (order_id, event_type) DO NOTHING`,
+      [orderId]
+    );
+
     let paymentAttempted = false;
     try {
       // Recupera eventual cobrança criada numa tentativa anterior antes de criar outra.
