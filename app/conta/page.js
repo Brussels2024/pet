@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { getUser } from '@/lib/auth';
 import { brl, dateTimeBr } from '@/lib/format';
 import { formatCnpj } from '@/lib/cnpj';
+import { decryptOrderAddress, ensurePiiSchema } from '@/lib/pii';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +20,12 @@ export default async function ContaPage({ searchParams }) {
   const sp = await searchParams;
   const novoPedido = sp?.pedido ? Number(sp.pedido) : null;
 
-  const orders = await query(
-    'SELECT id, status, payment_method, total, shipping_address, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50',
+  await ensurePiiSchema();
+  const rawOrders = await query(
+    'SELECT id, status, payment_method, total, shipping_address, shipping_address_enc, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50',
     [user.id]
   );
+  const orders = rawOrders.map((order) => ({ ...order, shipping_address: decryptOrderAddress(order.shipping_address_enc, order.shipping_address) }));
 
   return (
     <div className="wrap page">
