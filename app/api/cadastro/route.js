@@ -70,7 +70,7 @@ export async function POST(request) {
     `INSERT INTO users
        (email, password_hash, role, status, razao_social, nome_fantasia, cnpj, situacao_cnpj,
         telefone_enc, telefone_lookup_hash, cep_enc, logradouro_enc, numero_enc, complemento_enc, bairro_enc, cidade_enc, uf_enc)
-     VALUES ($1, $2, 'cliente', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+     VALUES ($1, $2, 'cliente', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
      RETURNING id`,
     [email, hash, status, pick('razao_social'), pick('nome_fantasia'), cnpj, situacao, pii.telefone, phoneHash, pii.cep, pii.logradouro, pii.numero, pii.complemento, pii.bairro, pii.cidade, pii.uf]
   );
