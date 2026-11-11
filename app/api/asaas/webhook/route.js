@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { sendAdminPush } from '@/lib/admin-push';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,5 +77,9 @@ export async function POST(request) {
   );
 
   const accepted = Boolean(result[0]?.accepted);
+  if (accepted && Number(result[0]?.updated_count || 0) > 0 && ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'].includes(eventName)) {
+    const orderRows = await query('SELECT id FROM orders WHERE asaas_payment_id = $1 LIMIT 1', [paymentId]);
+    if (orderRows[0]?.id) await sendAdminPush({ type: 'purchase_paid', orderId: orderRows[0].id });
+  }
   return NextResponse.json({ received: true, duplicate: !accepted });
 }
