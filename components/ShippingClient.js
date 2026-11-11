@@ -7,7 +7,8 @@ const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 export default function ShippingClient({user,freeCities,whatsapp}){
  const [address,setAddress]=useState({cep:user.cep||'',logradouro:user.logradouro||'',numero:user.numero||'',complemento:user.complemento||'',bairro:user.bairro||'',cidade:user.cidade||'',uf:user.uf||'SP'});
  const [cart,setCart]=useState([]),[notes,setNotes]=useState('');
- const [busy,setBusy]=useState(false),[error,setError]=useState('');\n const [checkoutKey,setCheckoutKey]=useState('');
+ const [busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [checkoutKey,setCheckoutKey]=useState('');
  useEffect(()=>{try{setCart(JSON.parse(localStorage.getItem('bp_cart')||'[]'));setNotes(sessionStorage.getItem('bp_checkout_notes')||'');setCheckoutKey(sessionStorage.getItem('bp_checkout_key')||'');}catch{}},[]);
  const set=(k,v)=>setAddress(a=>({...a,[k]:v}));
  const isFree=freeCities.some(c=>norm(c.city)===norm(address.cidade)&&c.uf.toUpperCase()===address.uf.toUpperCase());
@@ -24,7 +25,8 @@ export default function ShippingClient({user,freeCities,whatsapp}){
   if(!cart.length){setError('Seu carrinho está vazio.');return;}
   setBusy(true);
   try{
-   const key=checkoutKey||crypto.randomUUID();\n   if(!checkoutKey){setCheckoutKey(key);try{sessionStorage.setItem('bp_checkout_key',key)}catch{}}
+   const key=checkoutKey||crypto.randomUUID();
+   if(!checkoutKey){setCheckoutKey(key);try{sessionStorage.setItem('bp_checkout_key',key)}catch{}}
    const r=await fetch('/api/pedidos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:cart.map(i=>({id:i.id,qty:i.qty})),notes,checkoutKey:key,shippingAddress:address})});
    const d=await r.json();
    if(!r.ok){setError(d.error||'Não foi possível iniciar o pagamento.');setBusy(false);return;}
