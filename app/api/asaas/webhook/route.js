@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
@@ -12,7 +13,7 @@ export async function POST(request) {
   const received = request.headers.get('asaas-access-token') || '';
   const a = Buffer.from(received);
   const b = Buffer.from(expected);
-  if (a.length !== b.length || !require('crypto').timingSafeEqual(a, b)) {
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
   }
 
