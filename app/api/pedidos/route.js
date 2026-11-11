@@ -4,6 +4,7 @@ import { getUser, canSeePrices } from '@/lib/auth';
 import { brl } from '@/lib/format';
 import { enforceRequestLimit } from '@/lib/security';
 import { sendAdminPush } from '@/lib/admin-push';
+import { encryptPii, encryptOrderAddress, ensurePiiSchema, phoneLookupHash } from '@/lib/pii';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +93,7 @@ export async function POST(request) {
     return fail('Este pedido já foi iniciado e está em conferência do pagamento. Não refaça a compra; entre em contato com a Brussels Pet informando o pedido #' + order.id + '.', 409);
   }
 
+  await ensurePiiSchema();
   const shippingAddress = body.shippingAddress || {};
   const requiredAddress = ['cep','logradouro','numero','bairro','cidade','uf'];
   if (requiredAddress.some((key) => !String(shippingAddress[key] || '').trim())) return fail('Informe o endereço completo de entrega.');
@@ -110,8 +112,14 @@ export async function POST(request) {
     telefone: String(user.telefone || '').trim().slice(0, 30),
   };
   if (cleanAddress.cep.length !== 8 || cleanAddress.uf.length !== 2) return fail('Confira o CEP e a UF do endereço.');
-  await query('UPDATE users SET cep=$1, logradouro=$2, numero=$3, complemento=$4, bairro=$5, cidade=$6, uf=$7 WHERE id=$8',
-    [cleanAddress.cep, cleanAddress.logradouro, cleanAddress.numero, cleanAddress.complemento, cleanAddress.bairro, cleanAddress.cidade, cleanAddress.uf, user.id]);
+  const encryptedUserAddress = [
+    encryptPii(cleanAddress.cep), encryptPii(cleanAddress.logradouro), encryptPii(cleanAddress.numero),
+    encryptPii(cleanAddress.complemento), encryptPii(cleanAddress.bairro), encryptPii(cleanAddress.cidade), encryptPii(cleanAddress.uf),
+  ];
+  await query(
+    'UPDATE users SET cep_enc=$1, logradouro_enc=$2, numero_enc=$3, complemento_enc=$4, bairro_enc=$5, cidade_enc=$6, uf_enc=$7, cep=NULL, logradouro=NULL, numero=NULL, complemento=NULL, bairro=NULL, cidade=NULL, uf=NULL WHERE id=$8',
+    [...encryptedUserAddress, user.id]
+  );
 
   const wanted = Array.isArray(body.items) ? body.items : [];
   const qtyById = new Map();
@@ -180,8 +188,8 @@ export async function POST(request) {
          RETURNING p.id
        ),
        new_order AS (
-         INSERT INTO orders (user_id, status, payment_method, total, shipping, notes, payment_status, checkout_key, shipping_address)
-         SELECT $3, 'novo', 'asaas', e.amount, 0, $4, 'PENDING', $5, $6::jsonb
+         INSERT INTO orders (user_id, status, payment_method, total, shipping, notes, payment_status, checkout_key, shipping_address, shipping_address_enc)
+         SELECT $3, 'novo', 'asaas', e.amount, 0, $4, 'PENDING', $5, NULL, $6
            FROM eligible e
           WHERE e.total = e.available AND (SELECT COUNT(*) FROM reserved) = e.total
          RETURNING id
@@ -194,7 +202,7 @@ export async function POST(request) {
        )
        SELECT o.id, e.total, e.available, e.amount, (SELECT COUNT(*)::int FROM new_items) AS item_count
          FROM eligible e LEFT JOIN new_order o ON true`,
-      [ids, quantities, user.id, String(body.notes || '').slice(0, 500), checkoutKey, JSON.stringify(cleanAddress)]
+      [ids, quantities, user.id, String(body.notes || '').slice(0, 500), checkoutKey, encryptOrderAddress(cleanAddress)]
     );
     const row = created[0];
     if (!row?.id) return fail('O estoque mudou durante a finalização. Atualize o carrinho e tente novamente.', 409);
