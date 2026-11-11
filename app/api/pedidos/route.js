@@ -3,6 +3,7 @@ import { query, getSetting } from '@/lib/db';
 import { getUser, canSeePrices } from '@/lib/auth';
 import { brl } from '@/lib/format';
 import { enforceRequestLimit } from '@/lib/security';
+import { sendAdminPush } from '@/lib/admin-push';
 
 export const dynamic = 'force-dynamic';
 
@@ -186,6 +187,7 @@ export async function POST(request) {
        ON CONFLICT (order_id, event_type) DO NOTHING`,
       [orderId]
     );
+    await sendAdminPush({ type: 'checkout_pending', orderId });
 
     let paymentAttempted = false;
     try {
