@@ -13,29 +13,38 @@ function asaasConfig() {
   const apiKey = process.env.ASAAS_API_KEY;
   if (!apiKey) return null;
   const baseUrl = process.env.ASAAS_API_URL ||
-    (process.env.ASAAS_ENV === 'production'
-      ? 'https://api.asaas.com/v3'
-      : 'https://api-sandbox.asaas.com/v3');
+    (process.env.ASAAS_ENV === 'production' ? 'https://api.asaas.com/v3' : 'https://api-sandbox.asaas.com/v3');
   return { apiKey, baseUrl };
 }
 
 async function asaasRequest(config, path, payload) {
   const response = await fetch(`${config.baseUrl}${path}`, {
     method: payload ? 'POST' : 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      access_token: config.apiKey,
-      'User-Agent': 'BrusselsPet/1.0',
-    },
+    headers: { 'Content-Type': 'application/json', access_token: config.apiKey, 'User-Agent': 'BrusselsPet/1.0' },
     ...(payload ? { body: JSON.stringify(payload) } : {}),
     cache: 'no-store',
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error('Asaas API error:', response.status, result);
-    throw new Error('Não foi possível gerar a cobrança no Asaas.');
+    throw new Error('Não foi possível consultar ou gerar a cobrança no Asaas.');
   }
   return result;
+}
+
+async function findPayment(config, orderId) {
+  const result = await asaasRequest(config, `/payments?externalReference=${encodeURIComponent(`brussels-pet-order-${orderId}`)}`);
+  return result.data?.find((payment) => payment.externalReference === `brussels-pet-order-${orderId}`) || null;
+}
+
+async function checkoutResponse(orderId, payment) {
+  const invoiceUrl = payment.invoiceUrl || payment.bankSlipUrl;
+  if (!payment.id || !invoiceUrl) return null;
+  await query(
+    `UPDATE orders SET asaas_payment_id = $1, asaas_invoice_url = $2, payment_status = $3 WHERE id = $4`,
+    [payment.id, invoiceUrl, payment.status || 'PENDING', orderId]
+  );
+  return NextResponse.json({ ok: true, orderId, invoiceUrl });
 }
 
 export async function POST(request) {
@@ -47,10 +56,28 @@ export async function POST(request) {
   if (!config) return fail('O pagamento ainda não está configurado. Tente novamente mais tarde.', 503);
 
   let body;
-  try {
-    body = await request.json();
-  } catch {
-    return fail('Dados inválidos.');
+  try { body = await request.json(); } catch { return fail('Dados inválidos.'); }
+
+  const checkoutKey = String(body?.checkoutKey || '');
+  if (!/^[0-9a-f-]{36}$/i.test(checkoutKey)) return fail('Identificador do checkout inválido.');
+
+  const existing = await query(
+    'SELECT id, asaas_payment_id, asaas_invoice_url, payment_status FROM orders WHERE checkout_key = $1 AND user_id = $2 LIMIT 1',
+    [checkoutKey, user.id]
+  );
+  if (existing.length) {
+    const order = existing[0];
+    if (order.asaas_invoice_url) return NextResponse.json({ ok: true, orderId: order.id, invoiceUrl: order.asaas_invoice_url });
+    try {
+      const payment = await findPayment(config, order.id);
+      if (payment) {
+        const recovered = await checkoutResponse(order.id, payment);
+        if (recovered) return recovered;
+      }
+    } catch (error) {
+      console.error('Falha ao recuperar cobrança existente:', error);
+    }
+    return fail('Este pedido já foi iniciado e está em conferência do pagamento. Não refaça a compra; entre em contato com a Brussels Pet informando o pedido #' + order.id + '.', 409);
   }
 
   const wanted = Array.isArray(body.items) ? body.items : [];
@@ -62,43 +89,33 @@ export async function POST(request) {
       qtyById.set(id, (qtyById.get(id) || 0) + qty);
     }
   }
-  if (!qtyById.size) return fail('Seu carrinho está vazio.');
+  if (!qtyById.size || qtyById.size > 100) return fail('Seu carrinho está vazio ou contém itens demais.');
 
   const ids = [...qtyById.keys()];
+  const quantities = ids.map((id) => qtyById.get(id));
   const products = await query(
     'SELECT id, name, price, stock, active FROM products WHERE id = ANY($1::int[])',
     [ids]
   );
-
-  let total = 0;
-  const lines = [];
-  for (const id of ids) {
-    const product = products.find((row) => row.id === id);
-    const qty = qtyById.get(id);
-    if (!product || !product.active) return fail('Um dos produtos do carrinho não está mais disponível.');
-    if (qty > Number(product.stock)) {
-      return fail(`Estoque insuficiente para "${product.name}" (disponível: ${product.stock}).`);
-    }
-    const price = Number(product.price);
-    total += price * qty;
-    lines.push({ id, name: product.name, price, qty });
+  if (products.length !== ids.length || products.some((p) => !p.active)) {
+    return fail('Um dos produtos do carrinho não está mais disponível.');
   }
-
+  for (const product of products) {
+    const qty = qtyById.get(product.id);
+    if (qty > Number(product.stock)) return fail(`Estoque insuficiente para "${product.name}" (disponível: ${product.stock}).`);
+  }
+  const total = products.reduce((sum, p) => sum + Number(p.price) * qtyById.get(p.id), 0);
   const minOrder = Number(await getSetting('min_order', '0')) || 0;
-  if (total < minOrder) {
-    return fail(`O pedido mínimo é de ${brl(minOrder)}. Seu carrinho está em ${brl(total)}.`, 422);
-  }
+  if (total < minOrder) return fail(`O pedido mínimo é de ${brl(minOrder)}. Seu carrinho está em ${brl(total)}.`, 422);
 
-  let orderId = null;
-  const reservedLines = [];
+  let customerId = user.asaas_customer_id;
   try {
-    let customerId = user.asaas_customer_id;
     if (!customerId) {
       const customer = await asaasRequest(config, '/customers', {
         name: user.razao_social || user.nome_fantasia || user.email,
-        cpfCnpj: String(user.cnpj || '').replace(/\D/g, ''),
+        cpfCnpj: String(user.cnpj || '').replace(/\\D/g, ''),
         email: user.email,
-        mobilePhone: String(user.telefone || '').replace(/\D/g, '') || undefined,
+        mobilePhone: String(user.telefone || '').replace(/\\D/g, '') || undefined,
         externalReference: `brussels-pet-user-${user.id}`,
         notificationDisabled: false,
       });
@@ -107,57 +124,74 @@ export async function POST(request) {
       await query('UPDATE users SET asaas_customer_id = $1 WHERE id = $2', [customerId, user.id]);
     }
 
-    const orderRows = await query(
-      `INSERT INTO orders (user_id, status, payment_method, total, shipping, notes, payment_status)
-       VALUES ($1, 'novo', 'asaas', $2, 0, $3, 'PENDING') RETURNING id`,
-      [user.id, total.toFixed(2), String(body.notes || '').slice(0, 500)]
+    // Uma única instrução SQL reserva todo o estoque e cria pedido/itens atomicamente.
+    const created = await query(
+      `WITH requested AS (
+         SELECT * FROM unnest($1::int[], $2::int[]) AS r(id, qty)
+       ),
+       eligible AS (
+         SELECT COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE p.id IS NOT NULL AND p.active = true AND p.stock >= r.qty)::int AS available,
+                COALESCE(SUM(p.price * r.qty), 0)::numeric(12,2) AS amount
+           FROM requested r LEFT JOIN products p ON p.id = r.id
+       ),
+       reserved AS (
+         UPDATE products p SET stock = p.stock - r.qty
+           FROM requested r, eligible e
+          WHERE p.id = r.id AND e.total = e.available
+         RETURNING p.id
+       ),
+       new_order AS (
+         INSERT INTO orders (user_id, status, payment_method, total, shipping, notes, payment_status, checkout_key)
+         SELECT $3, 'novo', 'asaas', e.amount, 0, $4, 'PENDING', $5
+           FROM eligible e
+          WHERE e.total = e.available AND (SELECT COUNT(*) FROM reserved) = e.total
+         RETURNING id
+       ),
+       new_items AS (
+         INSERT INTO order_items (order_id, product_id, name, price, qty)
+         SELECT o.id, p.id, p.name, p.price, r.qty
+           FROM new_order o CROSS JOIN requested r JOIN products p ON p.id = r.id
+         RETURNING id
+       )
+       SELECT o.id, e.total, e.available, e.amount, (SELECT COUNT(*)::int FROM new_items) AS item_count
+         FROM eligible e LEFT JOIN new_order o ON true`,
+      [ids, quantities, user.id, String(body.notes || '').slice(0, 500), checkoutKey]
     );
-    orderId = orderRows[0].id;
-
-    for (const line of lines) {
-      const reserved = await query(
-        'UPDATE products SET stock = stock - $1 WHERE id = $2 AND active = true AND stock >= $1 RETURNING id',
-        [line.qty, line.id]
-      );
-      if (!reserved.length) throw new Error(`O estoque de "${line.name}" acabou de mudar. Atualize o carrinho.`);
-      reservedLines.push(line);
+    const row = created[0];
+    if (!row?.id) return fail('O estoque mudou durante a finalização. Atualize o carrinho e tente novamente.', 409);
+    const orderId = row.id;
+    let paymentAttempted = false;
+    try {
+      // Recupera eventual cobrança criada numa tentativa anterior antes de criar outra.
+      let payment = await findPayment(config, orderId);
+      if (!payment) {
+        paymentAttempted = true;
+        const dueDate = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+        payment = await asaasRequest(config, '/payments', {
+          customer: customerId,
+          billingType: 'UNDEFINED',
+          value: Number(row.amount),
+          dueDate,
+          description: `Pedido #${orderId} - Brussels Pet`,
+          externalReference: `brussels-pet-order-${orderId}`,
+        });
+      }
+      const response = await checkoutResponse(orderId, payment);
+      if (response) return response;
+      throw new Error('O Asaas não retornou o link de pagamento. Pedido mantido em conferência para evitar duplicidade.');
+    } catch (paymentError) {
+      // Se a chamada ao Asaas foi iniciada, o resultado pode ser incerto: não liberar estoque
+      // nem criar outra cobrança automaticamente. A próxima tentativa consulta externalReference.
       await query(
-        'INSERT INTO order_items (order_id, product_id, name, price, qty) VALUES ($1, $2, $3, $4, $5)',
-        [orderId, line.id, line.name, line.price.toFixed(2), line.qty]
-      );
+        `UPDATE orders SET payment_status = 'PAYMENT_REVIEW', notes = COALESCE(notes, '') WHERE id = $1`,
+        [orderId]
+      ).catch(() => {});
+      console.error('Cobrança em conferência:', { orderId, paymentAttempted, error: paymentError });
+      return fail(`O pedido #${orderId} foi registrado, mas o pagamento está em conferência. Não refaça o pedido. Entre em contato com a Brussels Pet.`, 502);
     }
-
-    const dueDate = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
-    const paymentResult = await asaasRequest(config, '/payments', {
-      customer: customerId,
-      billingType: 'UNDEFINED',
-      value: Number(total.toFixed(2)),
-      dueDate,
-      description: `Pedido #${orderId} - Brussels Pet`,
-      externalReference: `brussels-pet-order-${orderId}`,
-    });
-
-    const invoiceUrl = paymentResult.invoiceUrl || paymentResult.bankSlipUrl;
-    if (!paymentResult.id || !invoiceUrl) {
-      throw new Error('O Asaas não retornou o link de pagamento.');
-    }
-
-    await query(
-      `UPDATE orders
-          SET asaas_payment_id = $1, asaas_invoice_url = $2, payment_status = $3
-        WHERE id = $4`,
-      [paymentResult.id, invoiceUrl, paymentResult.status || 'PENDING', orderId]
-    );
-
-    return NextResponse.json({ ok: true, orderId, invoiceUrl });
   } catch (error) {
-    console.error('Erro ao criar cobrança Asaas:', error);
-    for (const line of reservedLines) {
-      await query('UPDATE products SET stock = stock + $1 WHERE id = $2', [line.qty, line.id]).catch(() => {});
-    }
-    if (orderId) {
-      await query("UPDATE orders SET payment_status = 'ERROR' WHERE id = $1", [orderId]).catch(() => {});
-    }
-    return fail(error.message || 'Não foi possível gerar o pagamento. Tente novamente.', 502);
+    console.error('Erro ao iniciar pedido:', error);
+    return fail(error.message || 'Não foi possível iniciar o pedido. Tente novamente.', 502);
   }
 }
