@@ -25,6 +25,11 @@ export default function AdminNotifications() {
         if (!active) return;
         if (lastId.current === null) {
           lastId.current = Number(data.latestId || 0);
+          const recent = data.notifications || [];
+          if (recent.length) {
+            setUnread(recent.length);
+            setLatest(recent[recent.length - 1]);
+          }
           return;
         }
         const events = data.notifications || [];
