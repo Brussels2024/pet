@@ -60,6 +60,16 @@ export async function POST(request) {
           AND EXISTS (SELECT 1 FROM accepted)
        RETURNING id
      )
+     , notified AS (
+       INSERT INTO admin_notifications (order_id, event_type)
+       SELECT o.id, 'purchase_paid'
+         FROM orders o
+        WHERE o.asaas_payment_id = $3
+          AND $2 IN ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED')
+          AND EXISTS (SELECT 1 FROM updated)
+       ON CONFLICT (order_id, event_type) DO NOTHING
+       RETURNING id
+     )
      SELECT EXISTS(SELECT 1 FROM accepted) AS accepted,
             (SELECT COUNT(*)::int FROM updated) AS updated_count`,
     [eventId, eventName, paymentId]
