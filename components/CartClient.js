@@ -11,6 +11,7 @@ export default function CartClient({ minOrder, status }) {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [checkoutKey, setCheckoutKey] = useState('');
 
   useEffect(() => {
     try {
@@ -23,6 +24,7 @@ export default function CartClient({ minOrder, status }) {
 
   function save(next) {
     setCart(next);
+    setCheckoutKey('');
     try {
       localStorage.setItem('bp_cart', JSON.stringify(next));
       window.dispatchEvent(new Event('cart-changed'));
@@ -43,6 +45,8 @@ export default function CartClient({ minOrder, status }) {
   async function finish() {
     setError('');
     setBusy(true);
+    const requestKey = checkoutKey || crypto.randomUUID();
+    if (!checkoutKey) setCheckoutKey(requestKey);
     try {
       const res = await fetch('/api/pedidos', {
         method: 'POST',
@@ -50,6 +54,7 @@ export default function CartClient({ minOrder, status }) {
         body: JSON.stringify({
           items: cart.map((i) => ({ id: i.id, qty: i.qty })),
           notes,
+          checkoutKey: requestKey,
         }),
       });
       const data = await res.json();
