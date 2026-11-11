@@ -59,7 +59,7 @@ export async function POST(request) {
   const lockedUntil = await accountLock(user.id);
   if (lockedUntil) {
     return NextResponse.json(
-      { error: 'E-mail ou senha incorretos. Se sua conta estiver bloqueada, confira o e-mail cadastrado.' },
+      { error: 'Conta bloqueada por 5 minutos após três tentativas de senha incorreta. Confira seu e-mail cadastrado para receber o aviso de segurança.' },
       { status: 401 }
     );
   }
@@ -85,7 +85,7 @@ export async function POST(request) {
     }
     if (result.locked_until) {
       return NextResponse.json(
-        { error: 'E-mail ou senha incorretos. Se sua conta estiver bloqueada, confira o e-mail cadastrado.' },
+        { error: 'Conta bloqueada por 5 minutos após três tentativas de senha incorreta. Confira seu e-mail cadastrado para receber o aviso de segurança.' },
         { status: 401 }
       );
     }
