@@ -239,3 +239,28 @@ export async function saveSettings(formData) {
   revalidatePath('/admin/configuracoes');
   revalidatePath('/');
 }
+
+
+/* ---------- Cidades com frete grátis ---------- */
+export async function addShippingCity(formData) {
+  await requireAdmin();
+  const city = text(formData, 'city').replace(/\s+/g, ' ').slice(0, 100);
+  const uf = text(formData, 'uf').toUpperCase().slice(0, 2);
+  if (!city || !/^[A-Z]{2}$/.test(uf)) return;
+  await query('INSERT INTO shipping_cities (city, uf, free_shipping) VALUES ($1, $2, false) ON CONFLICT DO NOTHING', [city, uf]);
+  revalidatePath('/admin/configuracoes/frete');
+}
+export async function toggleShippingCity(formData) {
+  await requireAdmin();
+  const id = Number(formData.get('id'));
+  if (!Number.isInteger(id) || id < 1) return;
+  await query('UPDATE shipping_cities SET free_shipping = NOT free_shipping WHERE id = $1', [id]);
+  revalidatePath('/admin/configuracoes/frete');
+}
+export async function deleteShippingCity(formData) {
+  await requireAdmin();
+  const id = Number(formData.get('id'));
+  if (!Number.isInteger(id) || id < 1) return;
+  await query('DELETE FROM shipping_cities WHERE id = $1', [id]);
+  revalidatePath('/admin/configuracoes/frete');
+}
