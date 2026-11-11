@@ -117,9 +117,9 @@ export async function POST(request) {
       if (!customer) {
         customer = await asaasRequest(config, '/customers', {
           name: user.razao_social || user.nome_fantasia || user.email,
-          cpfCnpj: String(user.cnpj || '').replace(/\\D/g, ''),
+          cpfCnpj: String(user.cnpj || '').replace(/\D/g, ''),
           email: user.email,
-          mobilePhone: String(user.telefone || '').replace(/\\D/g, '') || undefined,
+          mobilePhone: String(user.telefone || '').replace(/\D/g, '') || undefined,
           externalReference,
           notificationDisabled: false,
         });
