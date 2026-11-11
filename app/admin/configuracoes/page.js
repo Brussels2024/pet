@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getSetting } from '@/lib/db';
 import { saveSettings } from '../actions';
+import PIIMigrationButton from '@/components/PIIMigrationButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,8 @@ export default async function ConfiguracoesPage() {
         <p className="muted">Ative somente as cidades que terão frete grátis. Nas demais, o cliente consulta o valor pelo WhatsApp.</p>
         <Link className="btn" href="/admin/configuracoes/frete">Gerenciar cidades</Link>
       </div>
+
+      <PIIMigrationButton configured={Boolean(process.env.PII_ENCRYPTION_KEY)} />
 
       <form action={saveSettings} className="card" style={{ maxWidth: 560 }}>
         <h2 style={{ marginTop: 0 }}>Loja</h2>
