@@ -27,7 +27,11 @@ export default function LoginForm({ next, scope }) {
         setLoading(false);
         return;
       }
-      const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+      const defaultDestination = scope === 'admin' ? '/admin' : '/';
+      const requestedDestination = typeof next === 'string' ? next : '';
+      const safeNext = requestedDestination.startsWith('/') && !requestedDestination.startsWith('//')
+        ? requestedDestination
+        : defaultDestination;
       window.location.href = safeNext;
     } catch {
       setError('Erro de conexão. Tente novamente.');
