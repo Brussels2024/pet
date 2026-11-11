@@ -30,11 +30,12 @@ function ResetForm() {
     setBusy(false);
   }
 
-  if (done) return <><h1>Senha atualizada!</h1><p>Agora você já pode entrar com sua nova senha.</p><Link className="btn" href="/entrar">Ir para o login</Link></>;
+  if (done) return <><h1>Senha atualizada!</h1><p>O bloqueio de acesso foi removido. Agora você já pode entrar com sua nova senha.</p><Link className="btn" href="/entrar">Ir para o login</Link></>;
   return <>
     <h1>Criar nova senha</h1>
+    <p className="muted">A senha precisa ter pelo menos 8 caracteres, uma letra maiúscula, um número e um caractere especial (ex.: ! @ # . , ;). Não há limite curto de tamanho.</p>
     <form onSubmit={submit}>
-      <div className="field"><label htmlFor="senha">Nova senha (mínimo 12 caracteres)</label><input id="senha" name="senha" type="password" minLength={12} maxLength={72} required autoComplete="new-password" /></div>
+      <div className="field"><label htmlFor="senha">Nova senha</label><input id="senha" name="senha" type="password" minLength={8} required autoComplete="new-password" /></div>
       <div className="field"><label htmlFor="confirmacao">Confirme a nova senha</label><input id="confirmacao" name="confirmacao" type="password" minLength={8} required autoComplete="new-password" /></div>
       {message && <div className="msg error">{message}</div>}
       <button className="btn" type="submit" disabled={busy || !token} style={{ width: '100%' }}>{busy ? 'Salvando...' : 'Salvar nova senha'}</button>
