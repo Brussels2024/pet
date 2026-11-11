@@ -111,15 +111,20 @@ export async function POST(request) {
   let customerId = user.asaas_customer_id;
   try {
     if (!customerId) {
-      const customer = await asaasRequest(config, '/customers', {
-        name: user.razao_social || user.nome_fantasia || user.email,
-        cpfCnpj: String(user.cnpj || '').replace(/\\D/g, ''),
-        email: user.email,
-        mobilePhone: String(user.telefone || '').replace(/\\D/g, '') || undefined,
-        externalReference: `brussels-pet-user-${user.id}`,
-        notificationDisabled: false,
-      });
-      if (!customer.id) throw new Error('O Asaas não retornou o cadastro do cliente.');
+      const externalReference = `brussels-pet-user-${user.id}`;
+      const existingCustomers = await asaasRequest(config, `/customers?externalReference=${encodeURIComponent(externalReference)}`);
+      let customer = existingCustomers.data?.find((item) => item.externalReference === externalReference);
+      if (!customer) {
+        customer = await asaasRequest(config, '/customers', {
+          name: user.razao_social || user.nome_fantasia || user.email,
+          cpfCnpj: String(user.cnpj || '').replace(/\\D/g, ''),
+          email: user.email,
+          mobilePhone: String(user.telefone || '').replace(/\\D/g, '') || undefined,
+          externalReference,
+          notificationDisabled: false,
+        });
+      }
+      if (!customer?.id) throw new Error('O Asaas não retornou o cadastro do cliente.');
       customerId = customer.id;
       await query('UPDATE users SET asaas_customer_id = $1 WHERE id = $2', [customerId, user.id]);
     }
