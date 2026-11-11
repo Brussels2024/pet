@@ -4,7 +4,7 @@ import { query } from '@/lib/db';
 import { createSession } from '@/lib/auth';
 import { enforceRequestLimit } from '@/lib/security';
 import { verifyPassword } from '@/lib/passwords';
-import { accountLock, clearLoginFailures, createAdminChallenge, markLockEmailSent, recordFailedLogin } from '@/lib/login-security';
+import { accountLock, clearLoginFailures, createAdminChallenge, recordFailedLogin } from '@/lib/login-security';
 import { sendAdminVerificationCode } from '@/lib/twilio';
 import { sendAccountLockedEmail } from '@/lib/mailer';
 import { randomBytes } from 'crypto';
@@ -73,7 +73,6 @@ export async function POST(request) {
   if (!passwordOk) {
     const result = await recordFailedLogin(user.id);
     if (result.should_notify) {
-      await markLockEmailSent(user.id);
       try { await sendLockRecovery(user); }
       catch (error) { console.error('Falha ao enviar alerta de bloqueio:', error); }
     }
