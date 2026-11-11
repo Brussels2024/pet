@@ -41,10 +41,10 @@ export async function POST(request) {
     return NextResponse.json({ error: 'E-mail ou senha incorretos.' }, { status: 401 });
   }
 
-  const allowed = await enforceRequestLimit(request, adminLogin ? 'admin-login' : 'customer-login', adminLogin ? 5 : 8, 15 * 60, email);
+  const allowed = await enforceRequestLimit(request, adminLogin ? 'admin-login' : 'customer-login', adminLogin ? 5 : 8, 5 * 60, email);
   if (!allowed) return NextResponse.json(
-    { error: 'Muitas tentativas. Aguarde 15 minutos e tente novamente.' },
-    { status: 429, headers: { 'Retry-After': '900' } }
+    { error: 'Muitas tentativas. Aguarde 5 minutos e tente novamente.' },
+    { status: 429, headers: { 'Retry-After': '300' } }
   );
 
   const rows = await query(
