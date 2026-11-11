@@ -455,3 +455,34 @@ body:has(.admin-nav) .site-footer { display: none; }
   .social-float__link { width: 46px; height: 46px; }
   .social-float__link svg { width: 23px; height: 23px; }
 }
+
+
+/* Avisos de novos pedidos no painel */
+.admin-order-notifications { display: inline-flex; align-items: center; gap: 8px; position: relative; }
+.admin-order-toast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 120;
+  display: grid;
+  gap: 6px;
+  width: min(340px, calc(100vw - 32px));
+  padding: 16px 42px 16px 16px;
+  border: 1px solid rgba(120,120,120,.3);
+  border-radius: 14px;
+  background: var(--card, #fff);
+  color: var(--foreground, #171717);
+  box-shadow: 0 8px 30px rgba(0,0,0,.18);
+}
+.admin-order-toast span { font-size: .9rem; }
+.admin-order-toast a { font-weight: 700; }
+.admin-order-toast button {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 22px;
+  cursor: pointer;
+}
