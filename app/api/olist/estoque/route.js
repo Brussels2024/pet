@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
@@ -6,11 +7,11 @@ export const dynamic = 'force-dynamic';
 function safeEqual(received, expected) {
   const a = Buffer.from(received || '');
   const b = Buffer.from(expected || '');
-  return a.length > 0 && a.length === b.length && require('crypto').timingSafeEqual(a, b);
+  return a.length > 0 && a.length === b.length && timingSafeEqual(a, b);
 }
 
-// Endpoint de entrada para o conector Olist. O adaptador recebe SKU + saldo absoluto;
-// o formato exato enviado pelo Olist será mapeado quando a conta/API V3 estiver disponível.
+// Adaptador interno temporário: SKU + saldo absoluto.
+// O formato nativo da Olist será conectado após a conta e o contrato da API V3.
 export async function POST(request) {
   const expected = process.env.OLIST_WEBHOOK_TOKEN;
   if (!expected) {
@@ -33,6 +34,14 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Evento ou lista de produtos inválida.' }, { status: 400 });
   }
 
+  const normalized = products.map((item) => ({
+    sku: String(item?.sku || '').trim(),
+    stock: Number(item?.stock),
+  }));
+  if (normalized.some((item) => !item.sku || !Number.isSafeInteger(item.stock) || item.stock < 0)) {
+    return NextResponse.json({ error: 'Todos os itens precisam ter SKU e estoque inteiro não negativo.' }, { status: 400 });
+  }
+
   const inserted = await query(
     'INSERT INTO olist_stock_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING event_id',
     [eventId]
@@ -40,16 +49,13 @@ export async function POST(request) {
   if (!inserted.length) return NextResponse.json({ received: true, duplicate: true });
 
   let updated = 0;
-  for (const item of products) {
-    const sku = String(item?.sku || '').trim();
-    const stock = Number(item?.stock);
-    if (!sku || !Number.isSafeInteger(stock) || stock < 0) continue;
+  for (const item of normalized) {
     const rows = await query(
       'UPDATE products SET stock = $1 WHERE sku = $2 RETURNING id',
-      [stock, sku]
+      [item.stock, item.sku]
     );
     updated += rows.length;
   }
 
-  return NextResponse.json({ received: true, updated, receivedProducts: products.length });
+  return NextResponse.json({ received: true, updated, receivedProducts: normalized.length });
 }
