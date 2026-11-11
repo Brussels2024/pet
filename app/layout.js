@@ -1,7 +1,7 @@
 import './globals.css';
 import Header from '@/components/Header';
 
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').trim().replace(/\\/+$/, '');
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '');
 const whatsapp = '5519995888333';
 const instagram = 'https://www.instagram.com/almapet2024/';
 
