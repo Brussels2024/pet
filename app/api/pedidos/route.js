@@ -89,6 +89,8 @@ export async function POST(request) {
     return fail(`O pedido mínimo é de ${brl(minOrder)}. Seu carrinho está em ${brl(total)}.`, 422);
   }
 
+  let orderId = null;
+  const reservedLines = [];
   try {
     let customerId = user.asaas_customer_id;
     if (!customerId) {
@@ -110,7 +112,7 @@ export async function POST(request) {
        VALUES ($1, 'novo', 'asaas', $2, 0, $3, 'PENDING') RETURNING id`,
       [user.id, total.toFixed(2), String(body.notes || '').slice(0, 500)]
     );
-    const orderId = orderRows[0].id;
+    orderId = orderRows[0].id;
 
     for (const line of lines) {
       const reserved = await query(
@@ -118,6 +120,7 @@ export async function POST(request) {
         [line.qty, line.id]
       );
       if (!reserved.length) throw new Error(`O estoque de "${line.name}" acabou de mudar. Atualize o carrinho.`);
+      reservedLines.push(line);
       await query(
         'INSERT INTO order_items (order_id, product_id, name, price, qty) VALUES ($1, $2, $3, $4, $5)',
         [orderId, line.id, line.name, line.price.toFixed(2), line.qty]
@@ -149,6 +152,12 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, orderId, invoiceUrl });
   } catch (error) {
     console.error('Erro ao criar cobrança Asaas:', error);
+    for (const line of reservedLines) {
+      await query('UPDATE products SET stock = stock + $1 WHERE id = $2', [line.qty, line.id]).catch(() => {});
+    }
+    if (orderId) {
+      await query("UPDATE orders SET payment_status = 'ERROR' WHERE id = $1", [orderId]).catch(() => {});
+    }
     return fail(error.message || 'Não foi possível gerar o pagamento. Tente novamente.', 502);
   }
 }
