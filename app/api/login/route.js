@@ -4,7 +4,7 @@ import { createSession } from '@/lib/auth';
 import { enforceRequestLimit } from '@/lib/security';
 import { verifyPassword } from '@/lib/passwords';
 import { accountLock, clearLoginFailures, recordFailedLogin } from '@/lib/login-security';
-import { sendAccountLockedEmail, sendSecurityAlertEmail } from '@/lib/mailer';
+import { sendAccountLockedEmail } from '@/lib/mailer';
 import { randomBytes } from 'crypto';
 import { hashRecoveryValue } from '@/lib/recovery';
 
@@ -41,10 +41,10 @@ export async function POST(request) {
     return NextResponse.json({ error: 'E-mail ou senha incorretos.' }, { status: 401 });
   }
 
-  const allowed = await enforceRequestLimit(request, adminLogin ? 'admin-login' : 'customer-login', adminLogin ? 5 : 8, 5 * 60, email);
+  const allowed = await enforceRequestLimit(request, adminLogin ? 'admin-login' : 'customer-login', adminLogin ? 5 : 8, 15 * 60, email);
   if (!allowed) return NextResponse.json(
-    { error: 'Muitas tentativas. Aguarde 5 minutos e tente novamente.' },
-    { status: 429, headers: { 'Retry-After': '300' } }
+    { error: 'Muitas tentativas. Aguarde e tente novamente.' },
+    { status: 429, headers: { 'Retry-After': '900' } }
   );
 
   const rows = await query(
@@ -76,33 +76,11 @@ export async function POST(request) {
       }
 
       if (recoveryLink) {
-        const accountEmailPromise = sendAccountLockedEmail({ to: user.email, link: recoveryLink });
-        const adminAlertPromise = (async () => {
-          const admins = await query("SELECT email FROM users WHERE role = 'admin' AND status = 'ativo' AND email <> $1", [user.email]);
-          const recipients = admins.map((admin) => admin.email).filter(Boolean);
-          const alertRecipients = recipients.length ? recipients : [process.env.SECURITY_ALERT_EMAIL || 'contato.brussels@gmail.com'];
-          return sendSecurityAlertEmail({
-            to: alertRecipients,
-            accountEmail: user.email,
-            accountName: user.nome_fantasia || user.razao_social || user.email,
-            accountType: user.role === 'admin' ? 'Administrador' : 'Cliente',
-          });
-        })();
-        const results = await Promise.allSettled([accountEmailPromise, adminAlertPromise]);
-        results.forEach((item) => {
-          if (item.status === 'rejected') console.error('Falha ao enviar alerta de bloqueio:', item.reason);
-        });
-      } else {
         try {
-          const admins = await query("SELECT email FROM users WHERE role = 'admin' AND status = 'ativo' AND email <> $1", [user.email]);
-          const recipients = admins.map((admin) => admin.email).filter(Boolean);
-          await sendSecurityAlertEmail({
-            to: recipients.length ? recipients : [process.env.SECURITY_ALERT_EMAIL || 'contato.brussels@gmail.com'],
-            accountEmail: user.email,
-            accountName: user.nome_fantasia || user.razao_social || user.email,
-            accountType: user.role === 'admin' ? 'Administrador' : 'Cliente',
-          });
-        } catch (error) { console.error('Falha ao enviar alerta administrativo:', error); }
+          await sendAccountLockedEmail({ to: user.email, link: recoveryLink });
+        } catch (error) {
+          console.error('Falha ao enviar alerta de bloqueio para a conta:', error);
+        }
       }
     }
     if (result.locked_until) {
