@@ -7,7 +7,7 @@ import { enforceRequestLimit } from '@/lib/security';
 export const dynamic = 'force-dynamic';
 
 function normalizeBrazilPhone(value) {
-  const digits = String(value || '').replace(/\\D/g, '');
+  const digits = String(value || '').replace(/\D/g, '');
   if (digits.length === 10 || digits.length === 11) return '+55' + digits;
   if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) return '+' + digits;
   return null;
@@ -43,7 +43,7 @@ export async function POST(request) {
   }
 
   const email = String(body.email || '').trim().toLowerCase();
-  const code = String(body.code || '').replace(/\\D/g, '');
+  const code = String(body.code || '').replace(/\D/g, '');
   if (email.length > 254 || code.length !== 6) return NextResponse.json({ error: 'Código inválido ou expirado.' }, { status: 400 });
 
   const users = await query('SELECT id, telefone FROM users WHERE email = $1 LIMIT 1', [email]);
