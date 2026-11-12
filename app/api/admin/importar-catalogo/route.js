@@ -21,11 +21,11 @@ export async function POST(request) {
     })).filter((item) =>
       item.name &&
       /^data:image\/(?:jpeg|jpg|webp);base64,/.test(item.image) &&
-      item.image.length <= 650000
+      item.image.length <= 900000
     );
 
     const skipped = items.length - valid.length;
-    if (!valid.length) return NextResponse.json({ added: 0, skipped, reason: 'Formato ou tamanho de imagem inválido.' });
+    if (!valid.length) return NextResponse.json({ added: 0, skipped, reason: 'Foto inválida ou maior que 900 KB após a compressão.' });
 
     const existing = await query(
       'SELECT lower(name) AS name FROM products WHERE lower(name) = ANY($1::text[])',
