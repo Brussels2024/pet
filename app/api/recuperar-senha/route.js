@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 const generic = { message: 'Se os dados corresponderem a uma conta, enviaremos um código por SMS para o telefone cadastrado.' };
 
 function normalizeBrazilPhone(value) {
-  const digits = String(value || '').replace(/\\D/g, '');
+  const digits = String(value || '').replace(/\D/g, '');
   if (digits.length === 10 || digits.length === 11) return '+55' + digits;
   if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) return '+' + digits;
   return null;
