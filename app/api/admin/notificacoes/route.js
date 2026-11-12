@@ -20,6 +20,9 @@ export async function GET(request) {
         LIMIT 20`
     );
     const notifications = rows.reverse();
+    for (const notification of notifications) {
+      notification.items = await query('SELECT name, qty, color_name, color_sku FROM order_items WHERE order_id = $1 ORDER BY id', [notification.order_id]);
+    }
     const latestRows = await query('SELECT COALESCE(MAX(id), 0)::int AS latest_id FROM admin_notifications');
     return NextResponse.json({
       latestId: latestRows[0]?.latest_id || 0,
@@ -36,6 +39,9 @@ export async function GET(request) {
       LIMIT 30`,
     [after]
   );
+  for (const notification of notifications) {
+    notification.items = await query('SELECT name, qty, color_name, color_sku FROM order_items WHERE order_id = $1 ORDER BY id', [notification.order_id]);
+  }
   const latest = notifications.length ? notifications[notifications.length - 1].id : after;
   return NextResponse.json({ latestId: latest, notifications }, { headers: { 'Cache-Control': 'no-store' } });
 }
