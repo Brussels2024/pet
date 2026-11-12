@@ -61,6 +61,12 @@ export default async function Home({ searchParams }) {
     if (!imagesByProduct.has(image.product_id)) imagesByProduct.set(image.product_id, []);
     imagesByProduct.get(image.product_id).push(image.image_url);
   }
+  const colorRows = rows.length ? await query('SELECT id, product_id, name, sku, hex, stock, min_stock FROM product_colors WHERE product_id = ANY($1::int[]) ORDER BY position, id', [rows.map(product => product.id)]) : [];
+  const colorsByProduct = new Map();
+  for (const color of colorRows) {
+    if (!colorsByProduct.has(color.product_id)) colorsByProduct.set(color.product_id, []);
+    colorsByProduct.get(color.product_id).push(color);
+  }
   const products = rows.map((product) => ({
     ...product,
     images: imagesByProduct.get(product.id) || (product.image_url ? [product.image_url] : []),
