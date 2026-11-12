@@ -16,7 +16,8 @@ export default function RecuperarAcessoPage() {
   async function submit(e) {
     e.preventDefault();
     setBusy(true); setMessage('');
-    const form = new FormData(e.currentTarget);
+    const formElement = e.currentTarget;
+    const form = new FormData(formElement);
     let endpoint = '/api/recuperar-senha';
     let payload = { email: form.get('email') };
 
@@ -32,7 +33,7 @@ export default function RecuperarAcessoPage() {
       const data = await res.json();
       if (!res.ok) { setMessage(data.error || data.message || 'Não foi possível concluir.'); }
       else if (mode === 'email' && step === 1) { setStep(2); setMessage('Dados conferidos. Agora informe o novo e-mail e uma senha forte. A alteração será analisada pela equipe Brussels Pet antes de ser aplicada.'); }
-      else { setMessage(data.message || 'Solicitação recebida.'); if (mode === 'senha') e.currentTarget.reset(); }
+      else { setMessage(data.message || 'Solicitação recebida.'); }
     } catch { setMessage('Erro de conexão. Tente novamente.'); }
     setBusy(false);
   }
