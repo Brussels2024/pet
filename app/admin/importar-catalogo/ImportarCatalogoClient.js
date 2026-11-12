@@ -115,6 +115,7 @@ export default function ImportarCatalogoClient() {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Falha ao salvar os produtos.');
+        if (data.reason && Number(data.added || 0) === 0) throw new Error(data.reason);
         added += Number(data.added || 0);
         skipped += Number(data.skipped || 0);
         setProgress(`Cadastrando produtos: ${Math.min(start + batchSize, prepared.length)} de ${prepared.length}`);
