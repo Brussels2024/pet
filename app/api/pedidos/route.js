@@ -131,6 +131,14 @@ export async function POST(request) {
       if (Number.isSafeInteger(qty) && qty > 0 && qty <= 500) lines.push({ productId, colorId: null, qty });
     }
   }
+  const mergedLines = new Map();
+  for (const line of lines) {
+    const key = line.productId + ':' + (line.colorId ?? 'none');
+    const previous = mergedLines.get(key);
+    if (previous) previous.qty += line.qty;
+    else mergedLines.set(key, { ...line });
+  }
+  lines.splice(0, lines.length, ...mergedLines.values());
   if (!lines.length || lines.length > 200) return fail('Seu carrinho está vazio ou contém itens demais.');
   const productIds = [...new Set(lines.map(line => line.productId))];
   const products = await query(
