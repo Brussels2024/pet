@@ -20,12 +20,12 @@ export async function POST(request) {
       image: String(item?.image || ''),
     })).filter((item) =>
       item.name &&
-      /^data:image\/webp;base64,/.test(item.image) &&
+      /^data:image\/(?:jpeg|jpg|webp);base64,/.test(item.image) &&
       item.image.length <= 650000
     );
 
     const skipped = items.length - valid.length;
-    if (!valid.length) return NextResponse.json({ added: 0, skipped });
+    if (!valid.length) return NextResponse.json({ added: 0, skipped, reason: 'Formato ou tamanho de imagem inválido.' });
 
     const existing = await query(
       'SELECT lower(name) AS name FROM products WHERE lower(name) = ANY($1::text[])',
@@ -63,10 +63,7 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json({
-      added: inserted.length,
-      skipped: skipped + duplicateCount,
-    });
+    return NextResponse.json({ added: inserted.length, skipped: skipped + duplicateCount });
   } catch (error) {
     const message = error?.message || 'Não foi possível importar os produtos.';
     const status = /admin|autoriz/i.test(message) ? 403 : 500;
