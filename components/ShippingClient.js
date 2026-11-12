@@ -27,7 +27,7 @@ export default function ShippingClient({user,freeCities,whatsapp}){
   try{
    const key=checkoutKey||crypto.randomUUID();
    if(!checkoutKey){setCheckoutKey(key);try{sessionStorage.setItem('bp_checkout_key',key)}catch{}}
-   const r=await fetch('/api/pedidos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:cart.map(i=>({id:i.id,qty:i.qty})),notes,checkoutKey:key,shippingAddress:address})});
+   const r=await fetch('/api/pedidos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:cart.map(i=>({id:i.id,qty:i.qty,variants:i.variants||[]})),notes,checkoutKey:key,shippingAddress:address})});
    const d=await r.json();
    if(!r.ok){setError(d.error||'Não foi possível iniciar o pagamento.');setBusy(false);return;}
    if(!d.invoiceUrl){setError('O pedido foi registrado, mas o link do pagamento não chegou. Fale com a Brussels Pet antes de tentar novamente.');setBusy(false);return;}
