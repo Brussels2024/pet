@@ -71,7 +71,7 @@ function ProductRail({ title, subtitle, products, showPrice, randomize = false }
               {showPrice ? (
                 <>
                   <div className="price">{brl(p.price)}</div>
-                  <AddToCart
+                  {p.colors?.length ? <Link className="btn small" href={'/produto/' + p.id}>Escolher cores</Link> : <AddToCart
                     product={{
                       id: p.id,
                       name: p.name,
@@ -79,7 +79,7 @@ function ProductRail({ title, subtitle, products, showPrice, randomize = false }
                       stock: Number(p.stock),
                       image_url: p.image_url,
                     }}
-                  />
+                  />}
                 </>
               ) : (
                 <div className="price-locked">Preço visível após cadastro empresarial aprovado</div>
