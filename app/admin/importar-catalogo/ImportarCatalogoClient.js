@@ -35,7 +35,7 @@ function imageAsJpeg(bytes) {
     const url = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
     const image = new Image();
     image.onload = () => {
-      const scale = Math.min(1, 1200 / Math.max(image.width, image.height));
+      const scale = Math.min(1, 720 / Math.max(image.width, image.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(image.width * scale));
       canvas.height = Math.max(1, Math.round(image.height * scale));
@@ -46,9 +46,9 @@ function imageAsJpeg(bytes) {
         return;
       }
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      let data = canvas.toDataURL('image/jpeg', 0.78);
-      if (data.length > 650000) data = canvas.toDataURL('image/jpeg', 0.62);
-      if (data.length > 650000) data = canvas.toDataURL('image/jpeg', 0.48);
+      let data = canvas.toDataURL('image/jpeg', 0.48);
+      if (data.length > 650000) data = canvas.toDataURL('image/jpeg', 0.36);
+      if (data.length > 650000) data = canvas.toDataURL('image/jpeg', 0.26);
       URL.revokeObjectURL(url);
       if (data.length > 650000) reject(new Error('Uma das fotos ficou maior que o limite permitido.'));
       else resolve(data);
@@ -92,7 +92,7 @@ export default function ImportarCatalogoClient() {
 
       const prepared = [];
       const usedNames = new Set();
-      const entries = [...groups.values()];
+      const entries = [...groups.values()].sort((a, b) => `${a.parent}/${a.folder}`.localeCompare(`${b.parent}/${b.folder}`, 'pt-BR'));
       for (let index = 0; index < entries.length; index++) {
         const entry = entries[index];
         let name = getProductName(entry.folder, entry.parent);
@@ -133,7 +133,7 @@ export default function ImportarCatalogoClient() {
   return (
     <section className="card" style={{ maxWidth: 760 }}>
       <h2>Importar catálogo de produtos</h2>
-      <p className="muted">Selecione o ZIP com as fotos separadas por produto. O sistema cria um cadastro independente para cada modelo/SKU, usando a primeira foto como capa e gerando uma descrição inicial. A imagem é convertida para JPEG para funcionar também no Safari do iPhone.</p>
+      <p className="muted">Selecione o ZIP com as fotos separadas por produto. O sistema cria um cadastro separado para cada uma das 145 pastas de modelo. Usa o nome da pasta do produto e somente a primeira foto encontrada como capa. As demais fotos ficam para você adicionar depois na edição. As fotos GIF são convertidas e reduzidas para JPEG para facilitar o envio pelo iPhone.</p>
       <p className="muted">Os produtos entram ocultos na loja, com SKU, preço e estoque em branco/zero, para você completar e publicar depois. Você poderá editar cada produto e adicionar até mais cinco fotos.</p>
       <div className="field">
         <label htmlFor="catalog-zip">Arquivo ZIP do catálogo</label>
