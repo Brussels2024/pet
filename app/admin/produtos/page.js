@@ -31,6 +31,7 @@ export default async function ProdutosPage({ searchParams }) {
       <h1>Produtos e estoque</h1>
       <div className="inline-form" style={{ marginBottom: 16 }}>
         <Link className="btn" href="/admin/produtos/novo">Novo produto</Link>
+        <Link className="btn outline" href="/admin/importar-catalogo">Importar catálogo ZIP</Link>
         <form action="/admin/produtos" method="get" className="inline-form">
           <input name="q" defaultValue={q} placeholder="Buscar por nome ou código" />
           <button className="btn outline" type="submit">Buscar</button>
