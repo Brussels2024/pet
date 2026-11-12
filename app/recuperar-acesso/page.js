@@ -109,7 +109,7 @@ export default function RecuperarAcessoPage() {
           <form onSubmit={submitCode}>
             <div className="field">
               <label htmlFor="code">Código recebido por SMS</label>
-              <input id="code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required value={code} onChange={e => setCode(e.target.value.replace(/\\D/g, '').slice(0, 6))} placeholder="000000" />
+              <input id="code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" />
               <p className="muted">Digite o código de seis dígitos enviado ao telefone cadastrado. Ele expira em poucos minutos.</p>
             </div>
             {message && <div className="msg warn">{message}</div>}
