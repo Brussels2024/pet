@@ -18,7 +18,7 @@ export default async function PedidosPage() {
   );
   const items = orders.length
     ? await query(
-        'SELECT order_id, name, price, qty FROM order_items WHERE order_id = ANY($1::int[]) ORDER BY id',
+        'SELECT order_id, name, price, qty, color_name, color_sku FROM order_items WHERE order_id = ANY($1::int[]) ORDER BY id',
         [orders.map((o) => o.id)]
       )
     : [];
@@ -55,7 +55,7 @@ export default async function PedidosPage() {
                   .filter((i) => i.order_id === o.id)
                   .map((i, idx) => (
                     <tr key={idx}>
-                      <td>{i.name}</td>
+                      <td>{i.name}{i.color_name && <div className="muted">Cor: <b>{i.color_name}</b> · SKU da cor: {i.color_sku || '—'}</div>}</td>
                       <td>{i.qty} × {brl(i.price)}</td>
                       <td>{brl(Number(i.price) * i.qty)}</td>
                     </tr>
