@@ -110,6 +110,34 @@ export async function saveProduct(formData) {
   }
 
   if (!productId) throw new Error('Não foi possível salvar o produto.');
+  let colors = [];
+  try {
+    const rawColors = String(formData.get('colors_json') || '[]');
+    if (rawColors.length > 30000) throw new Error('Lista de cores muito grande.');
+    colors = JSON.parse(rawColors);
+    if (!Array.isArray(colors) || colors.length > 100) throw new Error('Lista de cores inválida.');
+    colors = colors.map((color, index) => ({
+      name: String(color.name || '').trim().slice(0, 60),
+      sku: String(color.sku || '').trim().slice(0, 80),
+      hex: /^#[0-9a-f]{6}$/i.test(String(color.hex || '')) ? color.hex : '#888888',
+      stock: Math.max(0, Math.min(1000000, Math.floor(Number(color.stock) || 0))),
+      min_stock: Math.max(0, Math.min(1000000, Math.floor(Number(color.min_stock) || 0))),
+      position: index + 1,
+    })).filter(color => color.name);
+  } catch {
+    throw new Error('Confira os dados das cores antes de salvar.');
+  }
+  if (colors.length) {
+    const totalColorStock = colors.reduce((sum, color) => sum + color.stock, 0);
+    await query('UPDATE products SET stock = $1 WHERE id = $2', [totalColorStock, productId]);
+  }
+  await query('DELETE FROM product_colors WHERE product_id = $1', [productId]);
+  for (const color of colors) {
+    await query(
+      'INSERT INTO product_colors (product_id, name, sku, hex, stock, min_stock, position) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [productId, color.name, color.sku, color.hex, color.stock, color.min_stock, color.position]
+    );
+  }
   await query('DELETE FROM product_images WHERE product_id = $1', [productId]);
   for (let i = 0; i < images.length; i++) {
     await query(
