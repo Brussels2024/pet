@@ -34,9 +34,38 @@ async function asaasRequest(config, path, payload) {
   return result;
 }
 
-async function findPayment(config, orderId) {
-  const result = await asaasRequest(config, `/payments?externalReference=${encodeURIComponent(`brussels-pet-order-${orderId}`)}`);
-  return result.data?.find((payment) => payment.externalReference === `brussels-pet-order-${orderId}`) || null;
+async function getPaymentDetails(config, paymentId) {
+  if (!paymentId) return null;
+  return asaasRequest(config, `/payments/${encodeURIComponent(paymentId)}`);
+}
+
+async function findPayment(config, orderId, knownPaymentId = null) {
+  // Se o ID já foi salvo no pedido, consulte a cobrança diretamente.
+  if (knownPaymentId) {
+    try {
+      const payment = await getPaymentDetails(config, knownPaymentId);
+      if (payment?.id) return payment;
+    } catch (error) {
+      console.error('Falha ao consultar cobrança pelo ID salvo:', { orderId, error });
+    }
+  }
+
+  // Se a resposta do POST se perdeu, procure pela referência única do pedido.
+  const externalReference = `brussels-pet-order-${orderId}`;
+  const result = await asaasRequest(
+    config,
+    `/payments?externalReference=${encodeURIComponent(externalReference)}&limit=100&offset=0`
+  );
+  const match = result.data?.find((payment) => payment.externalReference === externalReference);
+  if (!match?.id) return null;
+
+  // O endpoint de listagem pode trazer dados resumidos; recupere a cobrança completa.
+  try {
+    return await getPaymentDetails(config, match.id);
+  } catch (error) {
+    console.error('Falha ao detalhar cobrança encontrada:', { orderId, paymentId: match.id, error });
+    return match;
+  }
 }
 
 async function checkoutResponse(orderId, payment) {
@@ -81,7 +110,7 @@ export async function POST(request) {
     const order = existing[0];
     if (order.asaas_invoice_url) return NextResponse.json({ ok: true, orderId: order.id, invoiceUrl: order.asaas_invoice_url });
     try {
-      const payment = await findPayment(config, order.id);
+      const payment = await findPayment(config, order.id, order.asaas_payment_id);
       if (payment) {
         const recovered = await checkoutResponse(order.id, payment);
         if (recovered) return recovered;
