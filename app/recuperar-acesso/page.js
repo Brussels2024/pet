@@ -51,7 +51,7 @@ export default function RecuperarAcessoPage() {
             <div className="field">
               <label htmlFor="email">E-mail cadastrado</label>
               <input id="email" name="email" type="email" required autoComplete="email" />
-              <p className="muted">Enviaremos um link seguro para esse e-mail. Não usamos SMS nem código por mensagem.</p>
+              <p className="muted">Após confirmar, enviaremos um link seguro para o e-mail cadastrado. Abra o link para criar e confirmar sua nova senha.</p>
             </div>
           ) : (
             <>
@@ -66,7 +66,7 @@ export default function RecuperarAcessoPage() {
             </>
           )}
           {message && <div className="msg warn" role="status">{message}</div>}
-          <button className="btn" type="submit" disabled={busy} style={{ width: '100%' }}>{busy ? 'Verificando...' : mode === 'senha' ? 'Enviar link seguro' : step === 1 ? 'Conferir dados' : 'Enviar solicitação'}</button>
+          <button className="btn" type="submit" disabled={busy} style={{ width: '100%' }}>{busy ? 'Verificando...' : mode === 'senha' ? 'Confirmar' : step === 1 ? 'Conferir dados' : 'Enviar solicitação'}</button>
         </form>
         <p className="center muted" style={{ marginTop: 16 }}>Precisa de ajuda? <a href="mailto:contato.brussels@gmail.com"><b>Fale com o suporte</b></a></p>
         <p className="center muted"><Link href="/entrar"><b>Voltar para entrar</b></Link></p>
