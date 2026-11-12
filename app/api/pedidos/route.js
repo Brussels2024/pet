@@ -249,6 +249,13 @@ export async function POST(request) {
     const row = created[0];
     if (!row?.id) return fail('O estoque mudou durante a finalização. Atualize o carrinho e tente novamente.', 409);
     const orderId = row.id;
+    await query(
+      `UPDATE products p
+          SET stock = (SELECT COALESCE(SUM(pc.stock), 0)::int FROM product_colors pc WHERE pc.product_id = p.id)
+        WHERE p.id = ANY($1::int[])
+          AND EXISTS (SELECT 1 FROM product_colors pc WHERE pc.product_id = p.id)`,
+      [productIds]
+    );
 
     // Avisar o administrador assim que o cliente confirma o pedido,
     // sem esperar a criação ou confirmação do pagamento no Asaas.
