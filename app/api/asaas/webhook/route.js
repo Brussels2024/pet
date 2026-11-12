@@ -79,7 +79,10 @@ export async function POST(request) {
   const accepted = Boolean(result[0]?.accepted);
   if (accepted && Number(result[0]?.updated_count || 0) > 0 && ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'].includes(eventName)) {
     const orderRows = await query('SELECT id FROM orders WHERE asaas_payment_id = $1 LIMIT 1', [paymentId]);
-    if (orderRows[0]?.id) await sendAdminPush({ type: 'purchase_paid', orderId: orderRows[0].id });
+    if (orderRows[0]?.id) {
+      const items = await query('SELECT name, qty, color_name, color_sku FROM order_items WHERE order_id = $1 ORDER BY id', [orderRows[0].id]);
+      await sendAdminPush({ type: 'purchase_paid', orderId: orderRows[0].id, items });
+    }
   }
   return NextResponse.json({ received: true, duplicate: !accepted });
 }
