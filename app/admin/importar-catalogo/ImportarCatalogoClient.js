@@ -30,7 +30,7 @@ function productDescription(name) {
   return `${name}. Produto para pets pensado para complementar os cuidados e a rotina do animal. Consulte as informações do modelo antes da utilização.`;
 }
 
-function imageAsWebp(bytes) {
+function imageAsJpeg(bytes) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
     const image = new Image();
@@ -46,9 +46,9 @@ function imageAsWebp(bytes) {
         return;
       }
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      let data = canvas.toDataURL('image/webp', 0.82);
-      if (data.length > 650000) data = canvas.toDataURL('image/webp', 0.68);
-      if (data.length > 650000) data = canvas.toDataURL('image/webp', 0.5);
+      let data = canvas.toDataURL('image/jpeg', 0.78);
+      if (data.length > 650000) data = canvas.toDataURL('image/jpeg', 0.62);
+      if (data.length > 650000) data = canvas.toDataURL('image/jpeg', 0.48);
       URL.revokeObjectURL(url);
       if (data.length > 650000) reject(new Error('Uma das fotos ficou maior que o limite permitido.'));
       else resolve(data);
@@ -99,7 +99,7 @@ export default function ImportarCatalogoClient() {
         if (usedNames.has(name.toLocaleLowerCase('pt-BR'))) name = titleCase(entry.parent);
         if (usedNames.has(name.toLocaleLowerCase('pt-BR'))) name = `${name} ${index + 1}`;
         usedNames.add(name.toLocaleLowerCase('pt-BR'));
-        const image = await imageAsWebp(entry.bytes);
+        const image = await imageAsJpeg(entry.bytes);
         prepared.push({ name, description: productDescription(name), image });
         setProgress(`Preparando fotos: ${index + 1} de ${entries.length}`);
       }
@@ -133,7 +133,7 @@ export default function ImportarCatalogoClient() {
   return (
     <section className="card" style={{ maxWidth: 760 }}>
       <h2>Importar catálogo de produtos</h2>
-      <p className="muted">Selecione o ZIP com as fotos separadas por produto. O sistema cria um cadastro para cada pasta de modelo/SKU, usando somente a primeira foto como capa e gerando uma descrição inicial.</p>
+      <p className="muted">Selecione o ZIP com as fotos separadas por produto. O sistema cria um cadastro independente para cada modelo/SKU, usando a primeira foto como capa e gerando uma descrição inicial. A imagem é convertida para JPEG para funcionar também no Safari do iPhone.</p>
       <p className="muted">Os produtos entram ocultos na loja, com SKU, preço e estoque em branco/zero, para você completar e publicar depois. Você poderá editar cada produto e adicionar até mais cinco fotos.</p>
       <div className="field">
         <label htmlFor="catalog-zip">Arquivo ZIP do catálogo</label>
