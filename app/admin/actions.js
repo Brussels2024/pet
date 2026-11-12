@@ -118,7 +118,7 @@ export async function saveProduct(formData) {
     if (!Array.isArray(colors) || colors.length > 100) throw new Error('Lista de cores inválida.');
     colors = colors.map((color, index) => ({
       name: String(color.name || '').trim().slice(0, 60),
-      sku: (String(color.sku || '').trim() || ((text(formData, 'sku') || 'PROD' + productId) + '-' + String(color.name || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, ''))).slice(0, 80),
+      sku: (String(color.sku || '').trim() || ((text(formData, 'sku') || 'PROD' + productId) + '-' + String(color.name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, ''))).slice(0, 80),
       hex: /^#[0-9a-f]{6}$/i.test(String(color.hex || '')) ? color.hex : '#888888',
       stock: Math.max(0, Math.min(1000000, Math.floor(Number(color.stock) || 0))),
       min_stock: Math.max(0, Math.min(1000000, Math.floor(Number(color.min_stock) || 0))),
