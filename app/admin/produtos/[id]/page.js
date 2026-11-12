@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { query } from '@/lib/db';
 import { saveProduct } from '../../actions';
 import ImagePicker from '@/components/ImagePicker';
+import ProductColorsEditor from '@/components/ProductColorsEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +24,13 @@ export default async function ProdutoFormPage({ params }) {
     priority: false,
   };
   let imageValues = [];
+  let productColors = [];
 
   if (!isNew) {
     const rows = await query('SELECT * FROM products WHERE id = $1', [Number(id) || 0]);
     if (!rows.length) notFound();
     product = rows[0];
+    productColors = await query('SELECT id, name, sku, hex, stock, min_stock, position FROM product_colors WHERE product_id = $1 ORDER BY position, id', [Number(id)]);
     const savedImages = await query('SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 6', [Number(id)]);
     imageValues = savedImages.map((image) => image.image_url);
     if (!imageValues.length && product.image_url) imageValues = [product.image_url];
