@@ -3,6 +3,7 @@ import { query, getSetting } from '@/lib/db';
 import { getUser, canSeePrices } from '@/lib/auth';
 import { brl } from '@/lib/format';
 import { enforceRequestLimit } from '@/lib/security';
+import { sendAdminPush } from '@/lib/admin-push';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,5 +105,5 @@ export async function POST(request) {
     throw error;
   }
 
-  return NextResponse.json({ ok: true, orderId });
+  await query(\`INSERT INTO admin_notifications (order_id, event_type)\n     VALUES ($1, 'checkout_pending')\n     ON CONFLICT (order_id, event_type) DO NOTHING\`, [orderId]);\n  await sendAdminPush({ type: 'checkout_pending', orderId });\n\n  return NextResponse.json({ ok: true, orderId });
 }
