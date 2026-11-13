@@ -14,6 +14,10 @@ export default async function BannersPage() {
       <p className="muted"><Link href="/admin">← Painel</Link></p>
       <h1>Banners da página inicial</h1>
       <p className="muted">Cadastre até três imagens. A loja alterna os banners automaticamente a cada 30 segundos e também permite avançar pelas setas.</p>
+      <div className="msg warn" style={{ maxWidth: 760 }}>
+        <b>Formato recomendado: 1920 × 800 pixels (proporção 12:5).</b>
+        Use uma única imagem para computador e celular. A loja ajusta automaticamente a exibição para a largura da tela. Mantenha textos, logotipo e produtos importantes centralizados para evitar cortes nas laterais.
+      </div>
       <div className="banner-admin-grid">
         {[1, 2, 3].map((position) => {
           const banner = byPosition.get(position);
