@@ -240,23 +240,6 @@ export async function saveSettings(formData) {
   revalidatePath('/');
 }
 
-export async function saveStoreLogo(formData) {
-  await requireAdmin();
-  const image = text(formData, 'logo_image');
-  if (!image) {
-    await query("DELETE FROM settings WHERE key = 'store_logo'");
-  } else {
-    if (image.length > 700000) return;
-    if (!/^data:image\/(webp|jpeg|png);base64,/.test(image) && !/^https?:\/\//i.test(image)) return;
-    await query(
-      `INSERT INTO settings (key, value) VALUES ('store_logo', $1)
-       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-      [image]
-    );
-  }
-  revalidatePath('/admin/configuracoes');
-  revalidatePath('/');
-}
 
 /* ---------- Cidades com frete grátis ---------- */
 export async function addShippingCity(formData) {
