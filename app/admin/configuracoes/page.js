@@ -1,12 +1,16 @@
 import Link from 'next/link';
 import { getSetting } from '@/lib/db';
-import { saveSettings } from '../actions';
+import { saveSettings, saveStoreLogo } from '../actions';
+import ImagePicker from '@/components/ImagePicker';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ConfiguracoesPage() {
-  const minOrder = await getSetting('min_order', '300');
-  const whatsapp = await getSetting('whatsapp', '');
+  const [minOrder, whatsapp, storeLogo] = await Promise.all([
+    getSetting('min_order', '300'),
+    getSetting('whatsapp', ''),
+    getSetting('store_logo', ''),
+  ]);
 
   return (
     <>
@@ -23,6 +27,13 @@ export default async function ConfiguracoesPage() {
         <p className="muted">Ative somente as cidades que terão frete grátis. Nas demais, o cliente consulta o valor pelo WhatsApp.</p>
         <Link className="btn" href="/admin/configuracoes/frete">Gerenciar cidades</Link>
       </div>
+
+      <form action={saveStoreLogo} className="card" style={{ maxWidth: 560, marginBottom: 20 }}>
+        <h2 style={{ marginTop: 0 }}>Logo da loja</h2>
+        <p className="muted">Altere a imagem que aparece no cabeçalho da loja. Se remover a imagem personalizada, a logo original Brussels Pet será restaurada.</p>
+        <ImagePicker name="logo_image" initialValue={storeLogo} label="Nova logo" />
+        <button className="btn" type="submit">Salvar logo</button>
+      </form>
 
       <form action={saveSettings} className="card" style={{ maxWidth: 560 }}>
         <h2 style={{ marginTop: 0 }}>Loja</h2>
