@@ -1,18 +1,10 @@
-import { getSetting } from '@/lib/db';
-
-// A logo original permanece em public/logo.jpg e funciona como padrão.
-export default async function Logo({ size = 84 }) {
-  let src = '/logo.jpg';
-  try {
-    src = await getSetting('store_logo', '/logo.jpg') || '/logo.jpg';
-  } catch {
-    src = '/logo.jpg';
-  }
-
+// LOGO TRAVADA — identidade visual da Brussels Pet.
+// Não remover, trocar nem alterar este componente nem o arquivo public/logo.jpg.
+export default function Logo({ size = 84 }) {
   return (
     <img
-      src={src}
-      alt="Brussels Pet"
+      src="/logo.jpg"
+      alt="Brussels — Since 2024"
       width={size}
       height={size}
       style={{ objectFit: 'contain', display: 'block' }}
