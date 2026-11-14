@@ -16,7 +16,7 @@ export default async function Header() {
   return (
     <header className="site-header">
       <div className="wrap header-inner">
-        <Link href="/" className="logo-link" aria-label="Brussels Pet — página inicial">
+        <Link href={user?.role === 'admin' ? '/admin' : '/'} className="logo-link" aria-label={user?.role === 'admin' ? 'Brussels Pet — painel administrativo' : 'Brussels Pet — página inicial'}>
           <Logo />
         </Link>
 
