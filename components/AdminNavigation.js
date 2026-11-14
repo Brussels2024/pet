@@ -16,7 +16,7 @@ export default function AdminNavigation() {
         <Link href="/admin/pedidos" onClick={() => setOpen(false)}>Pedidos</Link>
         <Link href="/admin/configuracoes" onClick={() => setOpen(false)}>Configurações</Link>
         <AdminNotifications />
-        <form action="/api/logout" method="post"><button type="submit" className="link-btn">Sair</button></form>
+        <form action="/api/admin/logout" method="post"><button type="submit" className="link-btn">Sair</button></form>
       </div>
     </div>
   </nav>;
