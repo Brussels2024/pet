@@ -486,3 +486,13 @@ body:has(.admin-nav) .site-footer { display: none; }
   font-size: 22px;
   cursor: pointer;
 }
+
+
+/* Seleção de cores e estoque por variação */
+.color-quantity-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border,#e5e7eb)}
+.color-swatch{width:20px;height:20px;flex:0 0 20px;border:1px solid #999;border-radius:50%;display:inline-block}
+.color-quantity-name{display:flex;flex:1;flex-direction:column;min-width:0}
+.color-quantity-name small{font-size:12px;opacity:.7}
+.color-quantity-row input{width:86px;max-width:28vw}
+.add-to-cart-colors{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.admin-toast-items{font-size:12px;line-height:1.5;margin-top:6px;max-width:420px}

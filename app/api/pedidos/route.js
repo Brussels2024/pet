@@ -34,9 +34,38 @@ async function asaasRequest(config, path, payload) {
   return result;
 }
 
-async function findPayment(config, orderId) {
-  const result = await asaasRequest(config, `/payments?externalReference=${encodeURIComponent(`brussels-pet-order-${orderId}`)}`);
-  return result.data?.find((payment) => payment.externalReference === `brussels-pet-order-${orderId}`) || null;
+async function getPaymentDetails(config, paymentId) {
+  if (!paymentId) return null;
+  return asaasRequest(config, `/payments/${encodeURIComponent(paymentId)}`);
+}
+
+async function findPayment(config, orderId, knownPaymentId = null) {
+  // Se o ID já foi salvo no pedido, consulte a cobrança diretamente.
+  if (knownPaymentId) {
+    try {
+      const payment = await getPaymentDetails(config, knownPaymentId);
+      if (payment?.id) return payment;
+    } catch (error) {
+      console.error('Falha ao consultar cobrança pelo ID salvo:', { orderId, error });
+    }
+  }
+
+  // Se a resposta do POST se perdeu, procure pela referência única do pedido.
+  const externalReference = `brussels-pet-order-${orderId}`;
+  const result = await asaasRequest(
+    config,
+    `/payments?externalReference=${encodeURIComponent(externalReference)}&limit=100&offset=0`
+  );
+  const match = result.data?.find((payment) => payment.externalReference === externalReference);
+  if (!match?.id) return null;
+
+  // O endpoint de listagem pode trazer dados resumidos; recupere a cobrança completa.
+  try {
+    return await getPaymentDetails(config, match.id);
+  } catch (error) {
+    console.error('Falha ao detalhar cobrança encontrada:', { orderId, paymentId: match.id, error });
+    return match;
+  }
 }
 
 async function checkoutResponse(orderId, payment) {
@@ -81,7 +110,7 @@ export async function POST(request) {
     const order = existing[0];
     if (order.asaas_invoice_url) return NextResponse.json({ ok: true, orderId: order.id, invoiceUrl: order.asaas_invoice_url });
     try {
-      const payment = await findPayment(config, order.id);
+      const payment = await findPayment(config, order.id, order.asaas_payment_id);
       if (payment) {
         const recovered = await checkoutResponse(order.id, payment);
         if (recovered) return recovered;
@@ -114,30 +143,65 @@ export async function POST(request) {
     [cleanAddress.cep, cleanAddress.logradouro, cleanAddress.numero, cleanAddress.complemento, cleanAddress.bairro, cleanAddress.cidade, cleanAddress.uf, user.id]);
 
   const wanted = Array.isArray(body.items) ? body.items : [];
-  const qtyById = new Map();
+  const lines = [];
   for (const item of wanted) {
-    const id = Number(item.id);
-    const qty = Math.floor(Number(item.qty));
-    if (Number.isSafeInteger(id) && id > 0 && Number.isSafeInteger(qty) && qty > 0 && qty <= 500) {
-      qtyById.set(id, (qtyById.get(id) || 0) + qty);
+    const productId = Number(item.id);
+    if (!Number.isSafeInteger(productId) || productId < 1) continue;
+    if (Array.isArray(item.variants) && item.variants.length) {
+      for (const variant of item.variants) {
+        const colorId = Number(variant.colorId);
+        const qty = Math.floor(Number(variant.qty));
+        if (Number.isSafeInteger(colorId) && colorId > 0 && Number.isSafeInteger(qty) && qty > 0 && qty <= 500) {
+          lines.push({ productId, colorId, qty });
+        }
+      }
+    } else {
+      const qty = Math.floor(Number(item.qty));
+      if (Number.isSafeInteger(qty) && qty > 0 && qty <= 500) lines.push({ productId, colorId: null, qty });
     }
   }
-  if (!qtyById.size || qtyById.size > 100) return fail('Seu carrinho está vazio ou contém itens demais.');
-
-  const ids = [...qtyById.keys()];
-  const quantities = ids.map((id) => qtyById.get(id));
+  const mergedLines = new Map();
+  for (const line of lines) {
+    const key = line.productId + ':' + (line.colorId ?? 'none');
+    const previous = mergedLines.get(key);
+    if (previous) previous.qty += line.qty;
+    else mergedLines.set(key, { ...line });
+  }
+  lines.splice(0, lines.length, ...mergedLines.values());
+  if (!lines.length || lines.length > 200) return fail('Seu carrinho está vazio ou contém itens demais.');
+  const productIds = [...new Set(lines.map(line => line.productId))];
   const products = await query(
     'SELECT id, name, price, stock, active FROM products WHERE id = ANY($1::int[])',
-    [ids]
+    [productIds]
   );
-  if (products.length !== ids.length || products.some((p) => !p.active)) {
-    return fail('Um dos produtos do carrinho não está mais disponível.');
+  if (products.length !== productIds.length || products.some(p => !p.active)) return fail('Um dos produtos do carrinho não está mais disponível.');
+  const colorIds = lines.filter(line => line.colorId !== null).map(line => line.colorId);
+  const colors = colorIds.length ? await query(
+    'SELECT id, product_id, name, sku, stock FROM product_colors WHERE id = ANY($1::int[])',
+    [colorIds]
+  ) : [];
+  if (colors.length !== colorIds.length) return fail('Uma das cores escolhidas não está mais disponível.');
+  for (const line of lines) {
+    const product = products.find(p => p.id === line.productId);
+    if (line.colorId !== null) {
+      const color = colors.find(c => c.id === line.colorId && c.product_id === line.productId);
+      if (!color) return fail('A cor selecionada não pertence a este produto.');
+      if (line.qty > Number(color.stock)) return fail(`Estoque insuficiente para "${product.name}" — ${color.name} (SKU: ${color.sku || 'sem SKU'}; disponível: ${color.stock}).`);
+      line.colorName = color.name;
+      line.colorSku = color.sku || '';
+    } else {
+      if (await query('SELECT 1 FROM product_colors WHERE product_id = $1 LIMIT 1', [line.productId]).then(rows => rows.length)) {
+        return fail(`Escolha uma cor para o produto "${product.name}".`);
+      }
+      if (line.qty > Number(product.stock)) return fail(`Estoque insuficiente para "${product.name}" (disponível: ${product.stock}).`);
+      line.colorName = null;
+      line.colorSku = null;
+    }
   }
-  for (const product of products) {
-    const qty = qtyById.get(product.id);
-    if (qty > Number(product.stock)) return fail(`Estoque insuficiente para "${product.name}" (disponível: ${product.stock}).`);
-  }
-  const total = products.reduce((sum, p) => sum + Number(p.price) * qtyById.get(p.id), 0);
+  const total = lines.reduce((sum, line) => {
+    const product = products.find(p => p.id === line.productId);
+    return sum + Number(product.price) * line.qty;
+  }, 0);
   const minOrder = Number(await getSetting('min_order', '0')) || 0;
   if (total < minOrder) return fail(`O pedido mínimo é de ${brl(minOrder)}. Seu carrinho está em ${brl(total)}.`, 422);
 
@@ -162,43 +226,73 @@ export async function POST(request) {
       await query('UPDATE users SET asaas_customer_id = $1 WHERE id = $2', [customerId, user.id]);
     }
 
-    // Uma única instrução SQL reserva todo o estoque e cria pedido/itens atomicamente.
+    // Reserva o estoque por cor e grava uma linha por cor no mesmo pedido, atomicamente.
     const created = await query(
       `WITH requested AS (
-         SELECT * FROM unnest($1::int[], $2::int[]) AS r(id, qty)
+         SELECT * FROM jsonb_to_recordset($1::jsonb) AS r(product_id int, color_id int, qty int, color_name text, color_sku text)
        ),
        eligible AS (
          SELECT COUNT(*)::int AS total,
-                COUNT(*) FILTER (WHERE p.id IS NOT NULL AND p.active = true AND p.stock >= r.qty)::int AS available,
+                COUNT(*) FILTER (WHERE p.id IS NOT NULL AND p.active = true AND
+                  ((r.color_id IS NOT NULL AND c.id IS NOT NULL AND c.stock >= r.qty) OR
+                   (r.color_id IS NULL AND c_any.id IS NULL AND p.stock >= r.qty)))::int AS available,
                 COALESCE(SUM(p.price * r.qty), 0)::numeric(12,2) AS amount
-           FROM requested r LEFT JOIN products p ON p.id = r.id
+           FROM requested r
+           LEFT JOIN products p ON p.id = r.product_id
+           LEFT JOIN product_colors c ON c.id = r.color_id AND c.product_id = r.product_id
+           LEFT JOIN LATERAL (SELECT id FROM product_colors pc WHERE pc.product_id = r.product_id LIMIT 1) c_any ON true
        ),
-       reserved AS (
+       reserved_colors AS (
+         UPDATE product_colors c SET stock = c.stock - r.qty
+           FROM requested r, eligible e
+          WHERE r.color_id IS NOT NULL AND c.id = r.color_id AND c.product_id = r.product_id
+            AND e.total = e.available
+         RETURNING c.product_id
+       ),
+       reserved_legacy AS (
          UPDATE products p SET stock = p.stock - r.qty
            FROM requested r, eligible e
-          WHERE p.id = r.id AND e.total = e.available
+          WHERE r.color_id IS NULL AND p.id = r.product_id AND e.total = e.available
+         RETURNING p.id
+       ),
+       synced AS (
+         UPDATE products p SET stock = totals.total_stock
+           FROM (SELECT product_id, SUM(stock)::int AS total_stock FROM product_colors GROUP BY product_id) totals
+          WHERE p.id = totals.product_id
          RETURNING p.id
        ),
        new_order AS (
          INSERT INTO orders (user_id, status, payment_method, total, shipping, notes, payment_status, checkout_key, shipping_address)
-         SELECT $3, 'novo', 'asaas', e.amount, 0, $4, 'PENDING', $5, $6::jsonb
+         SELECT $2, 'novo', 'asaas', e.amount, 0, $3, 'PENDING', $4, $5::jsonb
            FROM eligible e
-          WHERE e.total = e.available AND (SELECT COUNT(*) FROM reserved) = e.total
+          WHERE e.total = e.available
+            AND (SELECT COUNT(*) FROM reserved_colors) = (SELECT COUNT(*) FROM requested WHERE color_id IS NOT NULL)
+            AND (SELECT COUNT(*) FROM reserved_legacy) = (SELECT COUNT(*) FROM requested WHERE color_id IS NULL)
          RETURNING id
        ),
        new_items AS (
-         INSERT INTO order_items (order_id, product_id, name, price, qty)
-         SELECT o.id, p.id, p.name, p.price, r.qty
-           FROM new_order o CROSS JOIN requested r JOIN products p ON p.id = r.id
+         INSERT INTO order_items (order_id, product_id, name, price, qty, color_id, color_name, color_sku)
+         SELECT o.id, p.id, p.name, p.price, r.qty, r.color_id, r.color_name, r.color_sku
+           FROM new_order o CROSS JOIN requested r JOIN products p ON p.id = r.product_id
          RETURNING id
        )
        SELECT o.id, e.total, e.available, e.amount, (SELECT COUNT(*)::int FROM new_items) AS item_count
          FROM eligible e LEFT JOIN new_order o ON true`,
-      [ids, quantities, user.id, String(body.notes || '').slice(0, 500), checkoutKey, JSON.stringify(cleanAddress)]
+      [JSON.stringify(lines.map(line => ({
+        product_id: line.productId, color_id: line.colorId, qty: line.qty,
+        color_name: line.colorName, color_sku: line.colorSku
+      }))), user.id, String(body.notes || '').slice(0, 500), checkoutKey, JSON.stringify(cleanAddress)]
     );
     const row = created[0];
     if (!row?.id) return fail('O estoque mudou durante a finalização. Atualize o carrinho e tente novamente.', 409);
     const orderId = row.id;
+    await query(
+      `UPDATE products p
+          SET stock = (SELECT COALESCE(SUM(pc.stock), 0)::int FROM product_colors pc WHERE pc.product_id = p.id)
+        WHERE p.id = ANY($1::int[])
+          AND EXISTS (SELECT 1 FROM product_colors pc WHERE pc.product_id = p.id)`,
+      [productIds]
+    );
 
     // Avisar o administrador assim que o cliente confirma o pedido,
     // sem esperar a criação ou confirmação do pagamento no Asaas.
@@ -208,7 +302,8 @@ export async function POST(request) {
        ON CONFLICT (order_id, event_type) DO NOTHING`,
       [orderId]
     );
-    await sendAdminPush({ type: 'checkout_pending', orderId });
+    const notificationItems = await query('SELECT name, qty, color_name, color_sku FROM order_items WHERE order_id = $1 ORDER BY id', [orderId]);
+    await sendAdminPush({ type: 'checkout_pending', orderId, items: notificationItems });
 
     let paymentAttempted = false;
     try {

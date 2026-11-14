@@ -123,6 +123,7 @@ export default function AdminNotifications() {
         <div className="admin-order-toast">
           <strong>{message.title} · Pedido #{latest.order_id}</strong>
           <span>{message.label} · R$ {Number(latest.total).toFixed(2).replace('.', ',')}</span>
+          {latest.items?.length > 0 && <div className="admin-toast-items">{latest.items.map((item, index) => <div key={index}>{item.name} — {item.color_name ? item.color_name + ' (SKU ' + (item.color_sku || '—') + ')' : 'Sem variação'} — {item.qty} un.</div>)}</div>}
           <a href="/admin/pedidos">Ver pedidos</a>
           <button type="button" aria-label="Fechar aviso" onClick={() => setLatest(null)}>×</button>
         </div>

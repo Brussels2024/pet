@@ -24,6 +24,8 @@ export default async function ContaPage({ searchParams }) {
     [user.id]
   );
 
+  const orderItems = orders.length ? await query('SELECT order_id, name, qty, color_name, color_sku FROM order_items WHERE order_id = ANY($1::int[]) ORDER BY id', [orders.map(o => o.id)]) : [];
+
   return (
     <div className="wrap page">
       <h1>Minha conta</h1>
@@ -65,7 +67,7 @@ export default async function ContaPage({ searchParams }) {
             <tbody>
               {orders.map((o) => (
                 <tr key={o.id}>
-                  <td>#{o.id}</td>
+                  <td>#{o.id}<div className="muted">{orderItems.filter(i => i.order_id === o.id).map((i, index) => <div key={index}>{i.name}{i.color_name ? ' — '+i.color_name+' (SKU '+(i.color_sku||'—')+')' : ''} · {i.qty} un.</div>)}</div></td>
                   <td>{dateTimeBr(o.created_at)}</td>
                   <td style={{ textTransform: 'capitalize' }}>{o.payment_method}</td>
                   <td>{brl(o.total)}</td>

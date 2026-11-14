@@ -72,11 +72,9 @@ export default function CartClient({ minOrder, status }) {
           <tbody>
             {cart.map((i) => (
               <tr key={i.id}>
-                <td>{i.name}</td>
+                <td>{i.name}{Array.isArray(i.variants) && i.variants.length > 0 && <div className="muted">{i.variants.map(v => <div key={v.colorId}>• {v.color} (SKU {v.colorSku || '—'}): {v.qty} un.</div>)}</div>}</td>
                 <td>{brl(i.price)}</td>
-                <td style={{ width: 100 }}>
-                  <input type="number" min="1" value={i.qty} onChange={(e) => changeQty(i.id, e.target.value)} />
-                </td>
+                <td style={{ width: 100 }}>{Array.isArray(i.variants) && i.variants.length > 0 ? <b>{i.qty}</b> : <input type="number" min="1" value={i.qty} onChange={(e) => changeQty(i.id, e.target.value)} />}</td>
                 <td>{brl(Number(i.price) * i.qty)}</td>
                 <td>
                   <button type="button" className="btn small outline" onClick={() => remove(i.id)}>

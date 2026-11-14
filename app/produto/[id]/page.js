@@ -32,6 +32,7 @@ export default async function ProductDetailPage({ params }) {
   const images = savedImages.length
     ? savedImages.map((image) => image.image_url)
     : (product.image_url ? [product.image_url] : []);
+  const colors = await query('SELECT id, name, sku, hex, stock, min_stock FROM product_colors WHERE product_id = $1 ORDER BY position, id', [productId]);
   const user = await getUser();
   const showPrice = canSeePrices(user);
 
@@ -62,6 +63,7 @@ export default async function ProductDetailPage({ params }) {
                   price: Number(product.price),
                   stock: Number(product.stock),
                   image_url: images[0] || '',
+                  colors,
                 }}
               />
             </div>
