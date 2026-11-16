@@ -32,11 +32,14 @@ export default function CartClient({ minOrder, status }) {
     }
   }
 
-  const changeQty = (id, value) => {
-    const qty = Math.max(1, Math.floor(Number(value) || 1));
-    save(cart.map((i) => (i.id === id ? { ...i, qty } : i)));
+  const keyOf = (item) => String(item.id) + '::' + String(item.color || '');
+  const changeQty = (key, value) => {
+    const item = cart.find((i) => keyOf(i) === key);
+    const minimum = Math.max(1, Number(item?.min_quantity) || 1);
+    const qty = Math.max(minimum, Math.floor(Number(value) || minimum));
+    save(cart.map((i) => (keyOf(i) === key ? { ...i, qty } : i)));
   };
-  const remove = (id) => save(cart.filter((i) => i.id !== id));
+  const remove = (key) => save(cart.filter((i) => keyOf(i) !== key));
 
   const total = cart.reduce((sum, i) => sum + Number(i.price) * i.qty, 0);
   const belowMin = total < minOrder;
@@ -49,7 +52,7 @@ export default function CartClient({ minOrder, status }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: cart.map((i) => ({ id: i.id, qty: i.qty })),
+          items: cart.map((i) => ({ id: i.id, qty: i.qty, color: i.color || '' })),
           payment,
           notes,
         }),
@@ -97,11 +100,11 @@ export default function CartClient({ minOrder, status }) {
                 <td>{i.name}</td>
                 <td>{brl(i.price)}</td>
                 <td style={{ width: 100 }}>
-                  <input type="number" min="1" value={i.qty} onChange={(e) => changeQty(i.id, e.target.value)} />
+                  <input type="number" min={Math.max(1, Number(i.min_quantity) || 1)} value={i.qty} onChange={(e) => changeQty(keyOf(i), e.target.value)} />
                 </td>
                 <td>{brl(Number(i.price) * i.qty)}</td>
                 <td>
-                  <button type="button" className="btn small outline" onClick={() => remove(i.id)}>
+                  <button type="button" className="btn small outline" onClick={() => remove(keyOf(i))}>
                     Remover
                   </button>
                 </td>
