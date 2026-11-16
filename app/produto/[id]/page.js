@@ -15,7 +15,7 @@ export default async function ProductDetailPage({ params }) {
 
   const rows = await query(
     `SELECT p.id, p.name, p.description, p.sku, p.price, p.stock, p.image_url,
-            p.priority, c.name AS category
+            p.priority, p.min_quantity, p.package_price, p.colors, c.name AS category
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
       WHERE p.id = $1 AND p.active = true
@@ -53,7 +53,9 @@ export default async function ProductDetailPage({ params }) {
           </div>
           {showPrice ? (
             <div className="product-detail-buy">
-              <div className="price">{brl(product.price)}</div>
+              <div className="price">{brl(product.price)} <span className="muted">/ unidade</span></div>
+              {product.package_price !== null && product.package_price !== undefined && <p className="muted">Preço do pacote: {brl(product.package_price)}</p>}
+              <p className="muted">Quantidade mínima: {Math.max(1, Number(product.min_quantity) || 1)} unidades</p>
               <p className="muted">{Number(product.stock) > 0 ? 'Disponível em estoque' : 'Sem estoque no momento'}</p>
               <AddToCart
                 product={{
@@ -62,6 +64,8 @@ export default async function ProductDetailPage({ params }) {
                   price: Number(product.price),
                   stock: Number(product.stock),
                   image_url: images[0] || '',
+                  min_quantity: Number(product.min_quantity) || 1,
+                  colors: Array.isArray(product.colors) ? product.colors : [],
                 }}
               />
             </div>
