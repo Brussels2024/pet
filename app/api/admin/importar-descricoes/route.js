@@ -16,6 +16,7 @@ export async function POST(request) {
     await requireAdmin();
     const body = await request.json();
     const rows = Array.isArray(body?.rows) ? body.rows : [];
+    const overwriteExisting = body?.overwriteExisting === true;
     if (!rows.length || rows.length > 5000) {
       return NextResponse.json({ error: 'Envie uma planilha com 1 a 5.000 descrições.' }, { status: 400 });
     }
@@ -33,6 +34,7 @@ export async function POST(request) {
     let updated = 0;
     let notFound = 0;
     let alreadyDescribed = 0;
+    let overwritten = 0;
     let ambiguous = 0;
     let invalid = 0;
 
@@ -64,13 +66,14 @@ export async function POST(request) {
       }
 
       const product = matches[0];
-      if (String(product.description ?? '').trim()) {
+      if (String(product.description ?? '').trim() && !overwriteExisting) {
         alreadyDescribed++;
         if (details.length < 100) details.push({ name, reason: 'Já possui descrição; a descrição atual foi preservada.' });
         continue;
       }
 
       await query('UPDATE products SET description = $1 WHERE id = $2', [description, product.id]);
+      if (String(product.description ?? '').trim()) overwritten++;
       updated++;
     }
 
@@ -81,6 +84,7 @@ export async function POST(request) {
       updated,
       notFound,
       alreadyDescribed,
+      overwritten,
       ambiguous,
       invalid,
       details,
