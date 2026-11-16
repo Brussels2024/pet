@@ -79,7 +79,7 @@ export async function saveProduct(formData) {
     images.push(value);
   }
   const cover = images[0] || '';
-  const categoryIds = [...new Set(formData.getAll('category_ids').map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))].slice(0, 2);
+  const categoryIds = [...new Set(formData.getAll('category_ids').map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))].slice(0, 5);
   const validCategories = categoryIds.length ? await query('SELECT id FROM categories WHERE id = ANY($1::int[]) AND active = true', [categoryIds]) : [];
   const selectedCategoryIds = validCategories.map((category) => Number(category.id));
   const values = [
