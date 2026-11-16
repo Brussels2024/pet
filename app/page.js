@@ -53,15 +53,17 @@ export default async function Home({ searchParams }) {
     params
   );
 
-  const imageRows = rows.length
-    ? await query('SELECT product_id, image_url, position FROM product_images WHERE product_id = ANY($1::int[]) ORDER BY product_id, position', [rows.map((product) => product.id)])
+  const productIds = rows.map((product) => Number(product.id)).filter((id) => Number.isInteger(id) && id > 0);
+  const idList = productIds.join(',');
+  const imageRows = productIds.length
+    ? await query(`SELECT product_id, image_url, position FROM product_images WHERE product_id IN (${idList}) ORDER BY product_id, position`)
     : [];
   const imagesByProduct = new Map();
   for (const image of imageRows) {
     if (!imagesByProduct.has(image.product_id)) imagesByProduct.set(image.product_id, []);
     imagesByProduct.get(image.product_id).push(image.image_url);
   }
-  const colorRows = rows.length ? await query('SELECT id, product_id, name, sku, hex, stock, min_stock FROM product_colors WHERE product_id = ANY($1::int[]) ORDER BY position, id', [rows.map(product => product.id)]) : [];
+  const colorRows = productIds.length ? await query(`SELECT id, product_id, name, sku, hex, stock, min_stock FROM product_colors WHERE product_id IN (${idList}) ORDER BY position, id`) : [];
   const colorsByProduct = new Map();
   for (const color of colorRows) {
     if (!colorsByProduct.has(color.product_id)) colorsByProduct.set(color.product_id, []);
