@@ -31,12 +31,12 @@ export default async function ProdutoFormPage({ params }) {
     if (!rows.length) notFound();
     product = rows[0];
     productColors = await query('SELECT id, name, sku, hex, stock, min_stock, position FROM product_colors WHERE product_id = $1 ORDER BY position, id', [Number(id)]);
-    const savedImages = await query('SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 6', [Number(id)]);
+    const savedImages = await query('SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 8', [Number(id)]);
     imageValues = savedImages.map((image) => image.image_url);
     if (!imageValues.length && product.image_url) imageValues = [product.image_url];
   }
 
-  while (imageValues.length < 6) imageValues.push('');
+  while (imageValues.length < 8) imageValues.push('');
 
   const cats = await query('SELECT id, name, parent_id FROM categories ORDER BY position, name, id');
   const parents = cats.filter((c) => !c.parent_id);
@@ -84,7 +84,7 @@ export default async function ProdutoFormPage({ params }) {
           </div>
         </div>
         <div className="field">
-          <label>Fotos do produto (até 6)</label>
+          <label>Fotos do produto (até 8)</label>
           <p className="muted">A primeira foto será a capa. As demais aparecem na galeria do anúncio. Você pode deixar os espaços vazios.</p>
           <div className="product-image-pickers">
             {imageValues.map((image, index) => (
