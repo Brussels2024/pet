@@ -12,7 +12,7 @@ function parseNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 function normalize(value) {
-  return String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('pt-BR');
+  return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 }
 function readDescriptionRows(matrix) {
   for (let headerIndex = 0; headerIndex < Math.min(matrix.length, 10); headerIndex++) {
