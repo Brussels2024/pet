@@ -123,7 +123,9 @@ export default function ImportarSkuPrecoClient() {
         return;
       }
 
-      const catalogSheet = workbook.Sheets[workbook.SheetNames[0]];\n      const catalogMatrix = XLSX.utils.sheet_to_json(catalogSheet, { header: 1, defval: '' });\n      const rows = readCatalog(catalogMatrix);
+      const catalogSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const catalogMatrix = XLSX.utils.sheet_to_json(catalogSheet, { header: 1, defval: '' });
+      const rows = readCatalog(catalogMatrix);
       setMessage('Planilha de catálogo identificada. Conferidos ' + rows.length + ' produtos. Cadastrando no sistema...');
       const response = await fetch('/api/admin/importar-sku-precos', {
         method: 'POST',
