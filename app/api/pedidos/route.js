@@ -33,34 +33,50 @@ export async function POST(request) {
   const wanted = Array.isArray(body.items) ? body.items : [];
   if (wanted.length > 50) return fail('O carrinho excede o limite de itens.');
   const qtyById = new Map();
+  const requestedLines = [];
   for (const item of wanted) {
     const id = Number(item.id);
     const qty = Math.floor(Number(item.qty));
-    if (id && qty > 0 && qty <= 100) {
-      const nextQty = (qtyById.get(id) || 0) + qty;
-      if (nextQty > 100) return fail('Quantidade máxima por produto: 100 unidades.');
-      qtyById.set(id, nextQty);
-    }
-    else return fail('Quantidade de produto inválida.');
+    const color = String(item.color || '').trim().slice(0, 60);
+    if (!id || qty <= 0 || qty > 100) return fail('Quantidade de produto inválida.');
+    const nextQty = (qtyById.get(id) || 0) + qty;
+    if (nextQty > 100) return fail('Quantidade máxima por produto: 100 unidades.');
+    qtyById.set(id, nextQty);
+    requestedLines.push({ id, qty, color });
   }
   if (qtyById.size === 0) return fail('Seu carrinho está vazio.');
 
   const ids = [...qtyById.keys()];
   const products = await query(
-    'SELECT id, name, price, stock, active FROM products WHERE id = ANY($1::int[])',
+    'SELECT id, name, price, stock, active, min_quantity, colors FROM products WHERE id = ANY($1::int[])',
     [ids]
   );
 
   let total = 0;
   const lines = [];
-  for (const id of ids) {
-    const p = products.find((row) => row.id === id);
-    const qty = qtyById.get(id);
+  for (const requested of requestedLines) {
+    const p = products.find((row) => row.id === requested.id);
     if (!p || !p.active) return fail('Um dos produtos do carrinho não está mais disponível.');
-    if (qty > p.stock) return fail(`Estoque insuficiente para "${p.name}" (disponível: ${p.stock}).`);
+    const minimum = Math.max(1, Number(p.min_quantity) || 1);
+    if (requested.qty < minimum) return fail(`A quantidade mínima de "${p.name}" é de ${minimum} unidades.`);
+    const availableColors = Array.isArray(p.colors) ? p.colors : [];
+    if (availableColors.length && !availableColors.includes(requested.color)) {
+      return fail(`Escolha uma cor válida para "${p.name}".`);
+    }
+    if (!availableColors.length && requested.color) return fail(`A cor informada para "${p.name}" não é válida.`);
     const price = Number(p.price); // sempre o preço do banco, nunca o do navegador
-    total += price * qty;
-    lines.push({ id, name: p.name, price, qty });
+    total += price * requested.qty;
+    lines.push({
+      id: requested.id,
+      name: requested.color ? `${p.name} — Cor: ${requested.color}` : p.name,
+      price,
+      qty: requested.qty,
+    });
+  }
+
+  for (const [id, qty] of qtyById) {
+    const p = products.find((row) => row.id === id);
+    if (qty > p.stock) return fail(`Estoque insuficiente para "${p.name}" (disponível: ${p.stock}).`);
   }
 
   const minOrder = Number(await getSetting('min_order', '0')) || 0;
@@ -69,10 +85,10 @@ export async function POST(request) {
   }
 
   const reservedLines = [];
-  for (const line of lines) {
+  for (const [id, qty] of qtyById) {
     const reserved = await query(
       'UPDATE products SET stock = stock - $1 WHERE id = $2 AND active = true AND stock >= $1 RETURNING id',
-      [line.qty, line.id]
+      [qty, id]
     );
     if (!reserved.length) {
       for (const previous of reservedLines) {
@@ -80,7 +96,7 @@ export async function POST(request) {
       }
       return fail('O estoque mudou enquanto seu pedido era finalizado. Atualize o carrinho e tente novamente.', 409);
     }
-    reservedLines.push(line);
+    reservedLines.push({ id, qty });
   }
 
   let orderId;
