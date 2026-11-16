@@ -15,7 +15,8 @@ export default async function ProductDetailPage({ params }) {
 
   const rows = await query(
     `SELECT p.id, p.name, p.description, p.sku, p.price, p.stock, p.image_url,
-            p.priority, p.min_quantity, p.package_price, c.name AS category
+            p.priority, p.min_quantity, p.package_price,
+            COALESCE((SELECT string_agg(cat.name, ', ' ORDER BY pc.position) FROM product_categories pc JOIN categories cat ON cat.id = pc.category_id WHERE pc.product_id = p.id), c.name) AS category
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
       WHERE p.id = $1 AND p.active = true
@@ -26,7 +27,7 @@ export default async function ProductDetailPage({ params }) {
 
   const product = rows[0];
   const savedImages = await query(
-    'SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 8',
+    'SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 6',
     [productId]
   );
   const images = savedImages.length
