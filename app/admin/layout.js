@@ -4,7 +4,11 @@ import AdminNavigation from '@/components/AdminNavigation';
 import AdminSessionKeepAlive from '@/components/AdminSessionKeepAlive';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Painel administrativo — Brussels Pet', robots: { index: false, follow: false } };
+export const metadata = {
+  title: 'Painel administrativo — Brussels Pet',
+  manifest: '/admin.webmanifest',
+  robots: { index: false, follow: false },
+};
 
 export default async function AdminLayout({ children }) {
   const user = await getAdminUser();
