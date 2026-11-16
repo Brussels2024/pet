@@ -5,6 +5,10 @@ import { getSetting } from '@/lib/db';
 
 export const metadata = {
   manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/logo.jpg',
+    apple: '/logo.jpg',
+  },
   title: 'Brussels Pet — distribuidora de produtos pet para empresas',
   description: 'Distribuidora B2B de produtos pet. Preços exclusivos para empresas com CNPJ.',
 };
@@ -14,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export default async function RootLayout({ children }) {
   let whatsapp = '';
   try {
-    whatsapp = (await getSetting('whatsapp', '')).replace(/\D/g, '');
+    whatsapp = (await getSetting('whatsapp', '')).replace(/\\D/g, '');
   } catch {
     whatsapp = '';
   }
@@ -24,6 +28,8 @@ export default async function RootLayout({ children }) {
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Brussels Pet" />
+        <meta name="theme-color" content="#e5b224" />
+        <link rel="apple-touch-icon" href="/logo.jpg" />
       </head>
       <body>
         <StoreChrome
