@@ -70,11 +70,11 @@ export async function saveProduct(formData) {
   if (!name) return;
 
   const images = [];
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 8; i++) {
     const key = i === 1 ? 'image_url' : 'product_image_' + i;
     const value = text(formData, key);
     if (!value) continue;
-    if (value.length > 700000) return;
+    if (value.length > 550000) return;
     if (!/^data:image\/(webp|jpeg|png);base64,/.test(value) && !/^https?:\/\//i.test(value)) return;
     images.push(value);
   }
