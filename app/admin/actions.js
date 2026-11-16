@@ -163,6 +163,20 @@ export async function setStock(formData) {
   revalidatePath('/');
 }
 
+export async function deleteAllProducts(formData) {
+  await requireAdmin();
+  if (text(formData, 'confirmation') !== 'EXCLUIR') {
+    throw new Error('Confirmação inválida. Nenhum produto foi excluído.');
+  }
+
+  // product_images e product_colors são removidos pelo ON DELETE CASCADE.
+  // Pedidos e itens dos pedidos não são alterados.
+  await query('DELETE FROM products');
+
+  revalidatePath('/admin/produtos');
+  revalidatePath('/');
+}
+
 /* ---------- Categorias ---------- */
 
 export async function createCategory(formData) {
