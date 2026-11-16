@@ -3,13 +3,13 @@ import { useState } from 'react';
 import * as XLSX from 'xlsx';
 
 function normalize(value) {
-  return String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('pt-BR');
+  return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 }
 function parsePrice(value) {
   if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : null;
-  let raw = String(value ?? '').trim().replace(/R\\$/gi, '').replace(/\\s/g, '');
+  let raw = String(value ?? '').trim().replace(/R\$/gi, '').replace(/\s/g, '');
   if (!raw) return null;
-  if (raw.includes(',') && raw.includes('.')) raw = raw.lastIndexOf(',') > raw.lastIndexOf('.') ? raw.replace(/\\./g, '').replace(',', '.') : raw.replace(/,/g, '');
+  if (raw.includes(',') && raw.includes('.')) raw = raw.lastIndexOf(',') > raw.lastIndexOf('.') ? raw.replace(/\./g, '').replace(',', '.') : raw.replace(/,/g, '');
   else if (raw.includes(',')) raw = raw.replace(',', '.');
   const number = Number(raw);
   return Number.isFinite(number) && number >= 0 ? number : null;
@@ -17,7 +17,7 @@ function parsePrice(value) {
 function parseStock(value) {
   if (typeof value === 'number') return Number.isInteger(value) && value >= 0 ? value : null;
   const raw = String(value ?? '').trim();
-  if (!raw || !/^\\d+$/.test(raw)) return null;
+  if (!raw || !/^\d+$/.test(raw)) return null;
   const number = Number(raw);
   return Number.isSafeInteger(number) && number >= 0 ? number : null;
 }
