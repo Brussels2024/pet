@@ -99,6 +99,7 @@ export default function ImportarSkuPrecoClient() {
   const [fileName, setFileName] = useState('');
   const [message, setMessage] = useState('');
   const [summary, setSummary] = useState(null);
+  const [overwriteDescriptions, setOverwriteDescriptions] = useState(false);
 
   async function importFile(event) {
     const file = event.target.files?.[0];
@@ -114,7 +115,7 @@ export default function ImportarSkuPrecoClient() {
         const response = await fetch('/api/admin/importar-descricoes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rows: descriptionRows }),
+          body: JSON.stringify({ rows: descriptionRows, overwriteExisting: overwriteDescriptions }),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Não foi possível importar as descrições.');
@@ -143,6 +144,13 @@ export default function ImportarSkuPrecoClient() {
     <section className="card" style={{ maxWidth: 760 }}>
       <h2>Importar planilha de produtos</h2>
       <p className="muted">O sistema identifica automaticamente o tipo de arquivo. A tabela original com Produto, Código/SKU, preços e demais dados continua usando a importação completa. Uma planilha com as colunas Nome do produto e Descrição será tratada como atualização somente de descrições: o sistema procura o nome exato já cadastrado e altera exclusivamente a descrição. SKU, preço, estoque, fotos, categorias e demais dados não são modificados.</p>
+      <div className="field" style={{ marginTop: 12, marginBottom: 16 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input type="checkbox" checked={overwriteDescriptions} onChange={(event) => setOverwriteDescriptions(event.target.checked)} disabled={busy} />
+          Substituir descrições que já existem (somente na planilha Nome do produto e Descrição)
+        </label>
+        <p className="muted" style={{ marginTop: 6 }}>Desmarcado: preserva descrições atuais e preenche apenas as vazias. Marcado: a descrição da planilha substitui a atual quando encontrar um único produto com o mesmo nome.</p>
+      </div>
       <div className="field">
         <label htmlFor="sku-price-file">Arquivo Excel (.xlsx ou .xls)</label>
         <input id="sku-price-file" type="file" accept=".xlsx,.xls" onChange={importFile} disabled={busy} />
@@ -156,6 +164,7 @@ export default function ImportarSkuPrecoClient() {
         <p><b>{summary.updated}</b> descrições adicionadas.</p>
         <p><b>{summary.notFound}</b> produtos não encontrados pelo nome exato.</p>
         <p><b>{summary.alreadyDescribed}</b> produtos já tinham descrição e foram preservados.</p>
+        <p><b>{summary.overwritten || 0}</b> descrições existentes foram substituídas.</p>
         <p><b>{summary.ambiguous}</b> nomes duplicados no cadastro, ignorados por segurança.</p>
         <p><b>{summary.invalid}</b> linhas inválidas ou repetidas.</p>
         {summary.details?.length > 0 && <details><summary>Ver itens não atualizados e motivos</summary><ul>{summary.details.map((item, index) => <li key={index}>{item.name}: {item.reason}</li>)}</ul></details>}
@@ -170,7 +179,7 @@ export default function ImportarSkuPrecoClient() {
         <p><b>{summary.invalid}</b> linhas inválidas ignoradas.</p>
         {summary.details?.length > 0 && <details><summary>Ver itens que precisam de conferência</summary><ul>{summary.details.map((item, index) => <li key={index}>{item.name}: {item.reason}</li>)}</ul></details>}
       </div>}
-      <p className="muted" style={{ marginTop: 16 }}>Na importação de descrições, produtos que já possuem descrição são preservados. Se o nome não corresponder exatamente a um único produto cadastrado, o sistema não altera nada e mostra o motivo no resultado.</p>
+      <p className="muted" style={{ marginTop: 16 }}>Na importação de descrições, a opção acima controla se descrições existentes serão preservadas ou substituídas. Se o nome não corresponder exatamente a um único produto cadastrado, o sistema não altera nada e mostra o motivo no resultado. A importação original do catálogo continua separada e não usa essa opção.</p>
     </section>
   );
 }
