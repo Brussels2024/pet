@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function normalize(value) {
-  return String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('pt-BR');
+  return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 }
 
 export async function POST(request) {
@@ -48,7 +48,7 @@ export async function POST(request) {
       const productKey = normalize(sku) + '::' + normalize(name);
       if (seen.has(productKey)) {
         invalid++;
-        if (details.length < 100) details.push({ name, reason: 'SKU repetido no arquivo.' });
+        if (details.length < 100) details.push({ name, reason: 'Produto repetido no arquivo (mesmo nome e SKU).' });
         continue;
       }
       seen.add(productKey);
