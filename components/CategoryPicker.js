@@ -22,7 +22,7 @@ export default function CategoryPicker({ options = [], initialSelected = [] }) {
           return (
             <label key={option.id} className="category-picker-option">
               <input type="checkbox" checked={checked} onChange={() => toggle(Number(option.id))}
-                disabled={!checked && selected.length >= 2} />
+                disabled={!checked && selected.length >= 5} />
               <span>{option.label}</span>
             </label>
           );
