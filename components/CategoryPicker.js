@@ -3,19 +3,19 @@
 import { useState } from 'react';
 
 export default function CategoryPicker({ options = [], initialSelected = [] }) {
-  const [selected, setSelected] = useState(initialSelected.slice(0, 2).map(Number));
+  const [selected, setSelected] = useState(initialSelected.slice(0, 5).map(Number));
 
   function toggle(id) {
     setSelected((current) => {
       if (current.includes(id)) return current.filter((value) => value !== id);
-      if (current.length >= 2) return current;
+      if (current.length >= 5) return current;
       return [...current, id];
     });
   }
 
   return (
     <div className="field category-picker">
-      <span className="field-label">Categorias (até 2)</span>
+      <span className="field-label">Categorias (até 5)</span>
       <div className="category-picker-options">
         {options.map((option) => {
           const checked = selected.includes(Number(option.id));
@@ -29,7 +29,7 @@ export default function CategoryPicker({ options = [], initialSelected = [] }) {
         })}
       </div>
       {selected.map((id) => <input key={id} type="hidden" name="category_ids" value={id} />)}
-      <small className="muted">Selecione uma ou duas categorias para este produto.</small>
+      <small className="muted">Selecione até cinco categorias para este produto.</small>
     </div>
   );
 }
