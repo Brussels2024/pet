@@ -25,18 +25,21 @@ export default async function ProdutoFormPage({ params }) {
   };
   let imageValues = [];
   let productColors = [];
+  let productCategories = [];
 
   if (!isNew) {
     const rows = await query('SELECT * FROM products WHERE id = $1', [Number(id) || 0]);
     if (!rows.length) notFound();
     product = rows[0];
     productColors = await query('SELECT id, name, sku, hex, stock, min_stock, position FROM product_colors WHERE product_id = $1 ORDER BY position, id', [Number(id)]);
-    const savedImages = await query('SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 8', [Number(id)]);
+    productCategories = await query('SELECT category_id FROM product_categories WHERE product_id = $1 ORDER BY position, category_id', [Number(id)]);
+    if (!productCategories.length && product.category_id) productCategories = [{ category_id: product.category_id }];
+    const savedImages = await query('SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 6', [Number(id)]);
     imageValues = savedImages.map((image) => image.image_url);
     if (!imageValues.length && product.image_url) imageValues = [product.image_url];
   }
 
-  while (imageValues.length < 8) imageValues.push('');
+  while (imageValues.length < 6) imageValues.push('');
 
   const cats = await query('SELECT id, name, parent_id FROM categories ORDER BY position, name, id');
   const parents = cats.filter((c) => !c.parent_id);
@@ -64,13 +67,14 @@ export default async function ProdutoFormPage({ params }) {
             <input id="sku" name="sku" defaultValue={product.sku || ''} />
           </div>
           <div className="field">
-            <label htmlFor="category_id">Categoria / subcategoria</label>
-            <select id="category_id" name="category_id" defaultValue={product.category_id || ''}>
-              <option value="">Sem categoria</option>
+            <label htmlFor="category_ids">Categorias (selecione até 2)</label>
+            <select id="category_ids" name="category_ids" multiple size={Math.min(6, Math.max(3, options.length))}
+              defaultValue={productCategories.map((category) => String(category.category_id))}>
               {options.map((o) => (
                 <option key={o.id} value={o.id}>{o.label}</option>
               ))}
             </select>
+            <small className="muted">Escolha uma ou duas categorias. Para selecionar duas no computador, segure Ctrl (ou Command no Mac).</small>
           </div>
         </div>
         <div className="grid2">
@@ -84,7 +88,7 @@ export default async function ProdutoFormPage({ params }) {
           </div>
         </div>
         <div className="field">
-          <label>Fotos do produto (até 8)</label>
+          <label>Fotos do produto (até 6)</label>
           <p className="muted">A primeira foto será a capa. As demais aparecem na galeria do anúncio. Você pode deixar os espaços vazios.</p>
           <div className="product-image-pickers">
             {imageValues.map((image, index) => (
