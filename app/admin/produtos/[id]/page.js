@@ -95,7 +95,7 @@ export default async function ProdutoFormPage({ params }) {
             ))}
           </div>
         </div>
-        <ProductColorsEditor initialColors={productColors} />
+        <ProductColorsEditor initialColors={productColors} baseSku={product.sku || ''} />
         <div className="field">
           <label htmlFor="description">Descrição</label>
           <textarea id="description" name="description" rows={4} defaultValue={product.description || ''} />
