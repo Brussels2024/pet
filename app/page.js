@@ -14,6 +14,9 @@ export default async function Home({ searchParams }) {
   const catId = Number.isSafeInteger(requestedCatId) && requestedCatId > 0
     ? requestedCatId
     : null;
+  const requestedPage = Number(sp?.page);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const pageSize = 25;
 
   const user = await getUser();
   const showPrice = canSeePrices(user);
@@ -34,27 +37,44 @@ export default async function Home({ searchParams }) {
 
   const where = ['p.active = true'];
   if (catId) {
-    // catId foi validado como inteiro positivo; interpolar o número evita
-    // o erro de bind 08P01 observado no driver Neon nesta rota.
     where.push(
       `(p.category_id = ${catId} OR p.category_id IN (SELECT id FROM categories WHERE parent_id = ${catId}) OR EXISTS (SELECT 1 FROM product_categories pc LEFT JOIN categories selected ON selected.id = pc.category_id WHERE pc.product_id = p.id AND (pc.category_id = ${catId} OR selected.parent_id = ${catId})))`
     );
   }
   if (q) {
-    // Escapa aspas simples antes de montar o literal SQL da busca.
     const safeQ = q.replace(/'/g, "''");
     where.push(`(p.name ILIKE '%${safeQ}%' OR p.sku ILIKE '%${safeQ}%' OR p.description ILIKE '%${safeQ}%')`);
   }
 
+  const isHome = !catId && !q;
+  const regularWhere = [...where];
+  if (isHome) regularWhere.push('p.priority = false');
+  const regularWhereSql = regularWhere.join(' AND ');
+
+  const countRows = await query(
+    `SELECT COUNT(*)::int AS total FROM products p WHERE ${regularWhereSql}`
+  );
+  const totalProducts = Number(countRows[0]?.total || 0);
+  const totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * pageSize;
+
   const rows = await query(
     `SELECT p.id, p.name, p.description, p.sku, p.price, p.stock, p.image_url, p.priority
      FROM products p
-     WHERE ${where.join(' AND ')}
-     ORDER BY p.priority DESC, p.name
-     LIMIT 120`
+     WHERE ${regularWhereSql}
+     ORDER BY p.name
+     LIMIT ${pageSize} OFFSET ${offset}`
   );
 
-  const productIds = rows.map((product) => Number(product.id)).filter((id) => Number.isInteger(id) && id > 0);
+  const priorityRows = isHome
+    ? await query(
+        'SELECT p.id, p.name, p.description, p.sku, p.price, p.stock, p.image_url, p.priority FROM products p WHERE p.active = true AND p.priority = true ORDER BY p.name'
+      )
+    : [];
+
+  const allRows = [...priorityRows, ...rows];
+  const productIds = [...new Set(allRows.map((product) => Number(product.id)).filter((id) => Number.isInteger(id) && id > 0))];
   const idList = productIds.join(',');
   const imageRows = productIds.length
     ? await query(`SELECT product_id, image_url, position FROM product_images WHERE product_id IN (${idList}) ORDER BY product_id, position`)
@@ -64,21 +84,36 @@ export default async function Home({ searchParams }) {
     if (!imagesByProduct.has(image.product_id)) imagesByProduct.set(image.product_id, []);
     imagesByProduct.get(image.product_id).push(image.image_url);
   }
-  const colorRows = productIds.length ? await query(`SELECT id, product_id, name, sku, hex, stock, min_stock FROM product_colors WHERE product_id IN (${idList}) ORDER BY position, id`) : [];
+  const colorRows = productIds.length
+    ? await query(`SELECT id, product_id, name, sku, hex, stock, min_stock FROM product_colors WHERE product_id IN (${idList}) ORDER BY position, id`)
+    : [];
   const colorsByProduct = new Map();
   for (const color of colorRows) {
     if (!colorsByProduct.has(color.product_id)) colorsByProduct.set(color.product_id, []);
     colorsByProduct.get(color.product_id).push(color);
   }
-  const products = rows.map((product) => ({
-    ...product,
-    images: imagesByProduct.get(product.id) || (product.image_url ? [product.image_url] : []),
-    image_url: (imagesByProduct.get(product.id) || [product.image_url])[0] || '',
-  }));
+
+  const mapProduct = (product) => {
+    const images = imagesByProduct.get(product.id) || (product.image_url ? [product.image_url] : []);
+    return {
+      ...product,
+      images,
+      image_url: images[0] || '',
+      colors: colorsByProduct.get(product.id) || [],
+    };
+  };
+  const products = rows.map(mapProduct);
+  const priorityProducts = priorityRows.map(mapProduct);
   const storefrontProducts = showPrice ? products : products.map(({ price, ...product }) => product);
-  const priorityProducts = storefrontProducts.filter((product) => product.priority);
+  const storefrontPriorityProducts = showPrice
+    ? priorityProducts
+    : priorityProducts.map(({ price, ...product }) => product);
 
   const activeName = catId ? cats.find((c) => c.id === catId)?.name : null;
+  const paginationParams = new URLSearchParams();
+  if (q) paginationParams.set('q', q);
+  if (catId) paginationParams.set('cat', String(catId));
+  const paginationBase = paginationParams.toString() ? '/?' + paginationParams.toString() : '/';
 
   return (
     <>
@@ -98,7 +133,14 @@ export default async function Home({ searchParams }) {
             </div>
           )}
 
-          <ProductCarousel products={storefrontProducts} priorityProducts={priorityProducts} showPrice={showPrice} />
+          <ProductCarousel
+            products={storefrontProducts}
+            priorityProducts={storefrontPriorityProducts}
+            showPrice={showPrice}
+            page={safePage}
+            totalPages={totalPages}
+            paginationBase={paginationBase}
+          />
         </section>
       </div>
     </>
