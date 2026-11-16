@@ -171,7 +171,7 @@ export async function POST(request) {
   if (!lines.length || lines.length > 200) return fail('Seu carrinho está vazio ou contém itens demais.');
   const productIds = [...new Set(lines.map(line => line.productId))];
   const products = await query(
-    'SELECT id, name, price, stock, active FROM products WHERE id = ANY($1::int[])',
+    'SELECT id, name, price, stock, active, min_quantity FROM products WHERE id = ANY($1::int[])',
     [productIds]
   );
   if (products.length !== productIds.length || products.some(p => !p.active)) return fail('Um dos produtos do carrinho não está mais disponível.');
@@ -197,6 +197,13 @@ export async function POST(request) {
       line.colorName = null;
       line.colorSku = null;
     }
+  }
+  const quantityByProduct = new Map();
+  for (const line of lines) quantityByProduct.set(line.productId, (quantityByProduct.get(line.productId) || 0) + line.qty);
+  for (const [productId, quantity] of quantityByProduct) {
+    const product = products.find(p => p.id === productId);
+    const minimum = Math.max(1, Number(product?.min_quantity) || 1);
+    if (quantity < minimum) return fail(`A quantidade mínima de "${product.name}" é de ${minimum} unidades.`);
   }
   const total = lines.reduce((sum, line) => {
     const product = products.find(p => p.id === line.productId);
