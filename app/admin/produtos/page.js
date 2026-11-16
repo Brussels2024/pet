@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { query } from '@/lib/db';
 import { brl } from '@/lib/format';
 import { setStock } from '../actions';
+import DeleteAllProductsButton from './DeleteAllProductsButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,7 @@ export default async function ProdutosPage({ searchParams }) {
         <Link className="btn" href="/admin/produtos/novo">Novo produto</Link>
         <Link className="btn outline" href="/admin/importar-catalogo">Importar catálogo ZIP</Link>
         <Link className="btn outline" href="/admin/importar-sku-precos">Atualizar cadastro por planilha</Link>
+        <DeleteAllProductsButton />
         <form action="/admin/produtos" method="get" className="inline-form">
           <input name="q" defaultValue={q} placeholder="Buscar por nome ou código" />
           <button className="btn outline" type="submit">Buscar</button>
