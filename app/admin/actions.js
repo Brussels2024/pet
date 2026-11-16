@@ -7,6 +7,8 @@ import { requireAdmin } from '@/lib/auth';
 
 const text = (formData, key) => String(formData.get(key) ?? '').trim();
 const num = (formData, key) => Number(String(formData.get(key) ?? '').replace(',', '.')) || 0;
+const COLOR_SKU_CODES = { preto:'PT', branco:'BR', cinza:'CZ', prata:'PR', vermelho:'VM', vinho:'VH', laranja:'LJ', amarelo:'AM', dourado:'DR', verde:'VD', 'verde claro':'VC', azul:'AZ', 'azul marinho':'AN', 'azul claro':'AC', roxo:'RX', lilas:'LL', rosa:'RS', marrom:'MR', bege:'BG', turquesa:'TQ' };
+const colorCode = name => { const n=String(name||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().toLowerCase(); return COLOR_SKU_CODES[n] || n.replace(/[^a-z0-9]/g,'').slice(0,2).toUpperCase() || 'CO'; };
 
 /* ---------- Clientes ---------- */
 
@@ -125,7 +127,7 @@ export async function saveProduct(formData) {
     if (!Array.isArray(colors) || colors.length > 100) throw new Error('Lista de cores inválida.');
     colors = colors.map((color, index) => ({
       name: String(color.name || '').trim().slice(0, 60),
-      sku: (String(color.sku || '').trim() || ((text(formData, 'sku') || 'PROD' + productId) + '-' + String(color.name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, ''))).slice(0, 80),
+      sku: ((text(formData, 'sku') || 'PROD' + productId) + '-' + colorCode(color.name)).slice(0, 80),
       hex: /^#[0-9a-f]{6}$/i.test(String(color.hex || '')) ? color.hex : '#888888',
       stock: Math.max(0, Math.min(1000000, Math.floor(Number(color.stock) || 0))),
       min_stock: Math.max(0, Math.min(1000000, Math.floor(Number(color.min_stock) || 0))),
