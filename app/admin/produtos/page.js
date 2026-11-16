@@ -18,7 +18,8 @@ export default async function ProdutosPage({ searchParams }) {
   }
 
   const products = await query(
-    `SELECT p.id, p.name, p.sku, p.price, p.stock, p.active, p.image_url, p.priority, c.name AS category
+    `SELECT p.id, p.name, p.sku, p.price, p.stock, p.active, p.image_url, p.priority,
+            COALESCE((SELECT string_agg(cat.name, ', ' ORDER BY pc.position) FROM product_categories pc JOIN categories cat ON cat.id = pc.category_id WHERE pc.product_id = p.id), c.name) AS category
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        ${where}
