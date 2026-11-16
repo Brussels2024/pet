@@ -105,5 +105,13 @@ export async function POST(request) {
     throw error;
   }
 
-  await query(\`INSERT INTO admin_notifications (order_id, event_type)\n     VALUES ($1, 'checkout_pending')\n     ON CONFLICT (order_id, event_type) DO NOTHING\`, [orderId]);\n  await sendAdminPush({ type: 'checkout_pending', orderId });\n\n  return NextResponse.json({ ok: true, orderId });
+  await query(
+    \`INSERT INTO admin_notifications (order_id, event_type)
+     VALUES ($1, 'checkout_pending')
+     ON CONFLICT (order_id, event_type) DO NOTHING\`,
+    [orderId]
+  );
+  await sendAdminPush({ type: 'checkout_pending', orderId });
+
+  return NextResponse.json({ ok: true, orderId });
 }
