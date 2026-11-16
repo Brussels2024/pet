@@ -10,7 +10,10 @@ export const dynamic = 'force-dynamic';
 export default async function Home({ searchParams }) {
   const sp = await searchParams;
   const q = String(sp?.q || '').trim();
-  const catId = Number(sp?.cat) || null;
+  const requestedCatId = Number(sp?.cat);
+  const catId = Number.isSafeInteger(requestedCatId) && requestedCatId > 0
+    ? requestedCatId
+    : null;
 
   const user = await getUser();
   const showPrice = canSeePrices(user);
@@ -30,18 +33,17 @@ export default async function Home({ searchParams }) {
     }));
 
   const where = ['p.active = true'];
-  const params = [];
   if (catId) {
-    params.push(catId);
-    const n = params.length;
+    // catId foi validado como inteiro positivo; interpolar o número evita
+    // o erro de bind 08P01 observado no driver Neon nesta rota.
     where.push(
-      `(p.category_id = ${n} OR p.category_id IN (SELECT id FROM categories WHERE parent_id = ${n}) OR EXISTS (SELECT 1 FROM product_categories pc LEFT JOIN categories selected ON selected.id = pc.category_id WHERE pc.product_id = p.id AND (pc.category_id = ${n} OR selected.parent_id = ${n})))`
+      `(p.category_id = ${catId} OR p.category_id IN (SELECT id FROM categories WHERE parent_id = ${catId}) OR EXISTS (SELECT 1 FROM product_categories pc LEFT JOIN categories selected ON selected.id = pc.category_id WHERE pc.product_id = p.id AND (pc.category_id = ${catId} OR selected.parent_id = ${catId})))`
     );
   }
   if (q) {
-    params.push(`%${q}%`);
-    const n = params.length;
-    where.push(`(p.name ILIKE $${n} OR p.sku ILIKE $${n} OR p.description ILIKE $${n})`);
+    // Escapa aspas simples antes de montar o literal SQL da busca.
+    const safeQ = q.replace(/'/g, "''");
+    where.push(`(p.name ILIKE '%${safeQ}%' OR p.sku ILIKE '%${safeQ}%' OR p.description ILIKE '%${safeQ}%')`);
   }
 
   const rows = await query(
@@ -49,8 +51,7 @@ export default async function Home({ searchParams }) {
      FROM products p
      WHERE ${where.join(' AND ')}
      ORDER BY p.priority DESC, p.name
-     LIMIT 120`,
-    params
+     LIMIT 120`
   );
 
   const productIds = rows.map((product) => Number(product.id)).filter((id) => Number.isInteger(id) && id > 0);
