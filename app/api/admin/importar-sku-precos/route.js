@@ -45,13 +45,13 @@ export async function POST(request) {
         continue;
       }
 
-      const skuKey = normalize(sku);
-      if (seen.has(skuKey)) {
+      const productKey = normalize(sku) + '::' + normalize(name);
+      if (seen.has(productKey)) {
         invalid++;
         if (details.length < 100) details.push({ name, reason: 'SKU repetido no arquivo.' });
         continue;
       }
-      seen.add(skuKey);
+      seen.add(productKey);
 
       const categoryKey = normalize(categoryName);
       let categoryId = categoryByName.get(categoryKey);
@@ -68,8 +68,8 @@ export async function POST(request) {
       }
 
       const existing = await query(
-        'SELECT id FROM products WHERE lower(trim(sku)) = lower(trim($1)) ORDER BY id LIMIT 1',
-        [sku]
+        'SELECT id FROM products WHERE lower(trim(sku)) = lower(trim($1)) AND lower(trim(name)) = lower(trim($2)) ORDER BY id LIMIT 1',
+        [sku, name]
       );
       if (existing.length) {
         // Mantém estoque atual e fotos já cadastradas em atualizações futuras da planilha.
