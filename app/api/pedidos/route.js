@@ -106,9 +106,7 @@ export async function POST(request) {
   }
 
   await query(
-    \`INSERT INTO admin_notifications (order_id, event_type)
-     VALUES ($1, 'checkout_pending')
-     ON CONFLICT (order_id, event_type) DO NOTHING\`,
+    "INSERT INTO admin_notifications (order_id, event_type) VALUES ($1, 'checkout_pending') ON CONFLICT (order_id, event_type) DO NOTHING",
     [orderId]
   );
   await sendAdminPush({ type: 'checkout_pending', orderId });
