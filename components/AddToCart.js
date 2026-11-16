@@ -5,11 +5,21 @@ import { useState } from 'react';
 export default function AddToCart({ product }) {
   const colors = Array.isArray(product.colors) ? product.colors : [];
   const minimum = Math.max(1, Number(product.min_quantity) || 1);
-  const [qty, setQty] = useState(String(minimum));
+  const [qty, setQty] = useState('');
   const [quantities, setQuantities] = useState({});
+  const [selectedColors, setSelectedColors] = useState([]);
   const [added, setAdded] = useState(false);
   const [error, setError] = useState('');
   const soldOut = colors.length ? colors.every((color) => Number(color.stock) <= 0) : Number(product.stock) <= 0;
+  const totalSelected = Object.values(quantities).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+
+  function toggleColor(color) {
+    if (Number(color.stock) <= 0) return;
+    setSelectedColors((current) => current.includes(color.id)
+      ? current.filter((id) => id !== color.id)
+      : [...current, color.id]);
+    setError('');
+  }
 
   function add() {
     try {
@@ -18,7 +28,7 @@ export default function AddToCart({ product }) {
 
       if (colors.length) {
         const variants = colors
-          .filter((color) => Number(quantities[color.id]) > 0)
+          .filter((color) => selectedColors.includes(color.id) && Number(quantities[color.id]) > 0)
           .map((color) => ({
             colorId: color.id,
             color: color.name,
@@ -31,7 +41,7 @@ export default function AddToCart({ product }) {
           return;
         }
         if (!variants.length) {
-          setError('Escolha ao menos uma cor e informe a quantidade.');
+          setError('Selecione uma ou mais cores e informe as quantidades.');
           return;
         }
         for (const variant of variants) {
@@ -56,7 +66,11 @@ export default function AddToCart({ product }) {
           });
         }
       } else {
-        const amount = Math.max(minimum, Math.floor(Number(qty) || minimum));
+        const amount = Math.floor(Number(qty));
+        if (!Number.isFinite(amount) || amount < minimum) {
+          setError('Informe a quantidade mínima de ' + minimum + ' unidades.');
+          return;
+        }
         if (amount > Number(product.stock)) {
           setError('Quantidade maior que o estoque disponível.');
           return;
@@ -88,17 +102,44 @@ export default function AddToCart({ product }) {
         <>
           <p><b>Escolha as cores e as quantidades desejadas.</b></p>
           <p className="muted">Quantidade mínima total: {minimum} unidades.</p>
-          {colors.map((color) => (
+          <div className="color-swatch-picker" role="group" aria-label="Selecione as cores">
+            {colors.map((color) => {
+              const selected = selectedColors.includes(color.id);
+              const unavailable = Number(color.stock) <= 0;
+              return (
+                <button
+                  key={color.id}
+                  type="button"
+                  className={'color-swatch-option' + (selected ? ' selected' : '')}
+                  style={{ '--swatch-color': color.hex || '#888' }}
+                  onClick={() => toggleColor(color)}
+                  disabled={unavailable}
+                  aria-pressed={selected}
+                  aria-label={color.name + (unavailable ? ', sem estoque' : '')}
+                  title={color.name}
+                >
+                  <span className="color-swatch" />
+                  <span className="color-swatch-label">{color.name}</span>
+                </button>
+              );
+            })}
+          </div>
+          {colors.filter((color) => selectedColors.includes(color.id)).map((color) => (
             <div key={color.id} className="color-quantity-row">
               <span className="color-swatch" style={{ backgroundColor: color.hex || '#888' }} />
-              <span className="color-quantity-name">{color.name}<small>{color.stock} disponíveis</small></span>
+              <span className="color-quantity-name">{color.name}</span>
               <input
-                type="number" min="0" max={color.stock} value={quantities[color.id] || 0}
+                type="number"
+                min="0"
+                max={color.stock}
+                value={quantities[color.id] ?? ''}
+                placeholder="Qtd."
                 disabled={Number(color.stock) <= 0}
                 onChange={(event) => {
+                  const raw = event.target.value;
                   setQuantities((current) => ({
                     ...current,
-                    [color.id]: Math.min(Number(color.stock), Math.max(0, Math.floor(Number(event.target.value) || 0))),
+                    [color.id]: raw === '' ? '' : Math.min(Number(color.stock), Math.max(0, Math.floor(Number(raw) || 0))),
                   }));
                   setError('');
                 }}
@@ -106,12 +147,13 @@ export default function AddToCart({ product }) {
               />
             </div>
           ))}
-          <p className="muted">Total de unidades: <b>{Object.values(quantities).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0)}</b></p>
+          <p className="muted">Total de unidades: <b>{totalSelected}</b></p>
         </>
       ) : (
         <label className="field">
           <span>Quantidade (mín. {minimum})</span>
-          <input type="number" min={minimum} max={product.stock} value={qty} onChange={(event) => setQty(event.target.value)} aria-label="Quantidade" />
+          <input type="number" min={minimum} max={product.stock} value={qty} placeholder="Digite a quantidade"
+            onChange={(event) => { setQty(event.target.value); setError(''); }} aria-label="Quantidade" />
         </label>
       )}
       {error && <p className="msg error">{error}</p>}
