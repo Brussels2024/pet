@@ -48,7 +48,7 @@ function ProductRail({ title, subtitle, products, showPrice }) {
   }, [pages]);
 
   if (!products.length) return null;
-  const visible = products.slice(page * 4, page * 4 + 4);
+  const visible = products;
   const move = (direction) => setPage((current) => (current + direction + pages) % pages);
 
   return (
@@ -68,7 +68,7 @@ function ProductRail({ title, subtitle, products, showPrice }) {
       </div>
       <div className="products showcase-products">
         {visible.map((p) => (
-          <article className="product" key={p.id}>
+          <article className="product" key={p.id} style={products.indexOf(p) >= page * 4 && products.indexOf(p) < (page + 1) * 4 ? undefined : { display: "none" }}>
             <Link className="product-detail-link" href={'/produto/' + p.id} aria-label={'Ver detalhes de ' + p.name}>
               <ProductPhoto product={p} />
               <div className="info">
