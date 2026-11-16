@@ -1,9 +1,17 @@
 {
-  "name": "Brussels Pet Administrador",
+  "name": "Brussels Pet",
   "short_name": "Brussels Pet",
-  "start_url": "/admin",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#171717"
+  "theme_color": "#e5b224",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
 }
