@@ -26,7 +26,7 @@ export default async function ProductDetailPage({ params }) {
 
   const product = rows[0];
   const savedImages = await query(
-    'SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 6',
+    'SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 8',
     [productId]
   );
   const images = savedImages.length
