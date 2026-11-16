@@ -505,3 +505,9 @@ body:has(.admin-nav) .site-footer { display: none; }
 .color-swatch-option:disabled { opacity:.35; cursor:not-allowed; }
 .color-swatch-label { font-size:12px; }
 .color-quantity-row input { min-height:44px; }
+
+
+/* Menu de categorias com três linhas disponível em desktop e celular */
+.store-menu { display: flex; align-items: center; flex: 0 0 auto; }
+.shop { grid-template-columns: minmax(0, 1fr); }
+.shop > .sidebar { display: none; }
