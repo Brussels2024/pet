@@ -35,7 +35,7 @@ export default async function Home({ searchParams }) {
     params.push(catId);
     const n = params.length;
     where.push(
-      `(p.category_id = $${n} OR p.category_id IN (SELECT id FROM categories WHERE parent_id = $${n}))`
+      `(p.category_id = ${n} OR p.category_id IN (SELECT id FROM categories WHERE parent_id = ${n}) OR EXISTS (SELECT 1 FROM product_categories pc LEFT JOIN categories selected ON selected.id = pc.category_id WHERE pc.product_id = p.id AND (pc.category_id = ${n} OR selected.parent_id = ${n})))`
     );
   }
   if (q) {
