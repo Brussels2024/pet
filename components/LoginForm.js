@@ -5,6 +5,7 @@ import { useState } from 'react';
 export default function LoginForm({ next, scope }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
@@ -47,7 +48,38 @@ export default function LoginForm({ next, scope }) {
       </div>
       <div className="field">
         <label htmlFor="senha">Senha</label>
-        <input id="senha" name="senha" type="password" required autoComplete="current-password" />
+        <div style={{ position: 'relative' }}>
+          <input
+            id="senha"
+            name="senha"
+            type={showPassword ? 'text' : 'password'}
+            required
+            autoComplete="current-password"
+            style={{ paddingRight: 58 }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            aria-pressed={showPassword}
+            title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            style={{
+              position: 'absolute',
+              right: 8,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              border: 0,
+              background: 'transparent',
+              color: '#666',
+              cursor: 'pointer',
+              padding: '6px 8px',
+              fontSize: 19,
+              lineHeight: 1,
+            }}
+          >
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
       </div>
       {scope !== 'admin' && <p className="muted" style={{ textAlign: 'right', margin: '-4px 0 14px' }}><a href="/recuperar-acesso"><b>Esqueci minha senha ou e-mail</b></a></p>}
       {error && <div className="msg error">{error}</div>}
