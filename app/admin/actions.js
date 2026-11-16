@@ -70,15 +70,18 @@ export async function saveProduct(formData) {
   if (!name) return;
 
   const images = [];
-  for (let i = 1; i <= 8; i++) {
+  for (let i = 1; i <= 6; i++) {
     const key = i === 1 ? 'image_url' : 'product_image_' + i;
     const value = text(formData, key);
     if (!value) continue;
-    if (value.length > 550000) return;
+    if (value.length > 2100000) return;
     if (!/^data:image\/(webp|jpeg|png);base64,/.test(value) && !/^https?:\/\//i.test(value)) return;
     images.push(value);
   }
   const cover = images[0] || '';
+  const categoryIds = [...new Set(formData.getAll('category_ids').map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))].slice(0, 2);
+  const validCategories = categoryIds.length ? await query('SELECT id FROM categories WHERE id = ANY($1::int[]) AND active = true', [categoryIds]) : [];
+  const selectedCategoryIds = validCategories.map((category) => Number(category.id));
   const values = [
     name,
     text(formData, 'description'),
@@ -86,7 +89,7 @@ export async function saveProduct(formData) {
     num(formData, 'price').toFixed(2),
     Math.max(0, Math.floor(num(formData, 'stock'))),
     cover,
-    Number(formData.get('category_id')) || null,
+    selectedCategoryIds[0] || null,
     formData.get('active') === 'on',
     formData.get('priority') === 'on',
   ];
@@ -110,6 +113,10 @@ export async function saveProduct(formData) {
   }
 
   if (!productId) throw new Error('Não foi possível salvar o produto.');
+  await query('DELETE FROM product_categories WHERE product_id = $1', [productId]);
+  for (let i = 0; i < selectedCategoryIds.length; i++) {
+    await query('INSERT INTO product_categories (product_id, category_id, position) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [productId, selectedCategoryIds[i], i + 1]);
+  }
   let colors = [];
   try {
     const rawColors = String(formData.get('colors_json') || '[]');
