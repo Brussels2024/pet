@@ -14,23 +14,33 @@ function parseNumber(value) {
 function normalize(value) {
   return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 }
-function readDescriptionRows(matrix) {
-  for (let headerIndex = 0; headerIndex < Math.min(matrix.length, 10); headerIndex++) {
-    const header = matrix[headerIndex] || [];
-    const nameIndex = header.findIndex((value) => normalize(value) === 'nome do produto');
-    const descriptionIndex = header.findIndex((value) => normalize(value) === 'descricao');
-    if (nameIndex < 0 || descriptionIndex < 0) continue;
+function normalizeHeader(value) {
+  return String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]/g, '');
+}
+function readDescriptionRows(workbook) {
+  for (const sheetName of workbook.SheetNames || []) {
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) continue;
+    const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    for (let headerIndex = 0; headerIndex < Math.min(matrix.length, 30); headerIndex++) {
+      const header = matrix[headerIndex] || [];
+      const normalized = header.map(normalizeHeader);
+      const nameIndex = normalized.findIndex((value) => ['nomedoproduto', 'produto'].includes(value));
+      const descriptionIndex = normalized.findIndex((value) => ['descricao', 'descricaodoproduto'].includes(value));
+      if (nameIndex < 0 || descriptionIndex < 0) continue;
 
-    const rows = [];
-    for (let index = headerIndex + 1; index < matrix.length; index++) {
-      const row = matrix[index] || [];
-      const name = String(row[nameIndex] ?? '').trim();
-      const description = String(row[descriptionIndex] ?? '').trim();
-      if (!name && !description) continue;
-      rows.push({ name, description });
+      const rows = [];
+      for (let index = headerIndex + 1; index < matrix.length; index++) {
+        const row = matrix[index] || [];
+        const name = String(row[nameIndex] ?? '').trim();
+        const description = String(row[descriptionIndex] ?? '').trim();
+        if (!name && !description) continue;
+        rows.push({ name, description });
+      }
+      if (!rows.length) throw new Error('Encontrei as colunas de nome e descrição na aba "' + sheetName + '", mas não há produtos preenchidos.');
+      return rows;
     }
-    if (!rows.length) throw new Error('Encontrei as colunas Nome do produto e Descrição, mas não há produtos preenchidos.');
-    return rows;
   }
   return null;
 }
@@ -96,11 +106,9 @@ export default function ImportarSkuPrecoClient() {
     setBusy(true); setFileName(file.name); setMessage('Lendo e identificando o formato da planilha...'); setSummary(null);
     try {
       const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      if (!sheet) throw new Error('A planilha está vazia.');
-      const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      if (!workbook.SheetNames?.length) throw new Error('A planilha está vazia.');
 
-      const descriptionRows = readDescriptionRows(matrix);
+      const descriptionRows = readDescriptionRows(workbook);
       if (descriptionRows) {
         setMessage('Arquivo de descrições identificado. Conferindo os nomes dos produtos...');
         const response = await fetch('/api/admin/importar-descricoes', {
