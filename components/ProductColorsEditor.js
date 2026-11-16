@@ -22,7 +22,7 @@ export default function ProductColorsEditor({initialColors=[],baseSku:initialBas
  return <section className="field">
  <h2 style={{marginBottom:4}}>Cores e estoque por cor</h2><p className="muted">Clique nas cores da paleta. O SKU será gerado automaticamente a partir do SKU principal.</p>
  <div style={{display:'grid',gridTemplateColumns:'repeat(10,minmax(0,1fr))',gap:9,maxWidth:440,margin:'12px 0 18px'}}>
- {PALETTE.map(item=>{const selected=colors.some(c=>String(c.hex).toLowerCase()===item.hex.toLowerCase());return <button key={item.hex} type="button" title={item.name} aria-label={item.name} aria-pressed={selected} onClick={()=>addColor(item)} style={{width:30,height:30,padding:0,borderRadius:'50%',background:item.hex,border:selected?'3px solid #7c3aed':'1px solid #aaa',boxShadow:selected?'0 0 0 2px white, 0 0 0 4px #7c3aed':'none',cursor:selected?'default':'pointer',opacity:selected?.55:1}}/>;})}
+ {PALETTE.map(item=>{const selected=colors.some(c=>String(c.hex).toLowerCase()===item.hex.toLowerCase());return <button key={item.hex} type="button" title={item.name} aria-label={item.name} aria-pressed={selected} onClick={()=>addColor(item)} style={{width:30,height:30,padding:0,borderRadius:'50%',background:item.hex,border:selected?'3px solid #7c3aed':'1px solid #aaa',boxShadow:selected?'0 0 0 2px white, 0 0 0 4px #7c3aed':'none',cursor:selected?'default':'pointer',opacity:selected ? 0.55 : 1}}/>;})}
  </div>
  <input type="hidden" name="colors_json" value={JSON.stringify(serialized)}/>
  {colors.length===0?<p className="muted">Nenhuma cor selecionada ainda.</p>:colors.map((color,index)=><div key={color.id||color.hex} className="card" style={{marginBottom:10,padding:12}}>
