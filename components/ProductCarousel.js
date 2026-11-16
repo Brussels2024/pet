@@ -164,11 +164,12 @@ export default function ProductCarousel({
             ))}
           </div>
           {totalPages > 1 && (
-            <nav className="product-pagination" aria-label="Paginação de produtos">
+            <nav className="product-pagination" aria-label="Paginação de produtos" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, flexWrap: "wrap", marginTop: 22 }}>
               <Link
                 className={'btn outline small' + (page <= 1 ? ' disabled' : '')}
                 href={page <= 1 ? '#' : paginationBase + (paginationBase.includes('?') ? '&' : '?') + 'page=' + (page - 1)}
                 aria-disabled={page <= 1}
+                style={page <= 1 ? { opacity: 0.45, pointerEvents: "none" } : undefined}
                 tabIndex={page <= 1 ? -1 : 0}
               >‹ Anterior</Link>
               <span>Página {page} de {totalPages}</span>
@@ -176,6 +177,7 @@ export default function ProductCarousel({
                 className={'btn outline small' + (page >= totalPages ? ' disabled' : '')}
                 href={page >= totalPages ? '#' : paginationBase + (paginationBase.includes('?') ? '&' : '?') + 'page=' + (page + 1)}
                 aria-disabled={page >= totalPages}
+                style={page >= totalPages ? { opacity: 0.45, pointerEvents: "none" } : undefined}
                 tabIndex={page >= totalPages ? -1 : 0}
               >Próxima ›</Link>
             </nav>
