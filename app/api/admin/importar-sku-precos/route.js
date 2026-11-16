@@ -25,7 +25,7 @@ export async function POST(request) {
       const name = String(row?.name ?? '').trim().slice(0, 180);
       const sku = String(row?.sku ?? '').trim().slice(0, 100);
       const price = Number(row?.price), key = normalize(name);
-      if (!name || !sku || !Number.isFinite(price) || price < 0 || price > 9999999999) {
+      if (!name || !sku || row?.price === null || row?.price === undefined || row?.price === '' || !Number.isFinite(price) || price < 0 || price > 9999999999) {
         invalid++; if (details.length < 100) details.push({ name: name || '(sem nome)', reason: 'Nome, SKU ou preço inválido' }); continue;
       }
       if (seen.has(key)) {
