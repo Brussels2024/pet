@@ -9,7 +9,7 @@ export default function ImportarSkuPrecosPage() {
       <div className="row-actions" style={{ marginBottom: 16 }}>
         <Link className="btn outline" href="/admin/produtos">Voltar para produtos</Link>
       </div>
-      <h1>Importar SKU e preços</h1>
+      <h1>Importar catálogo completo</h1>
       <ImportarSkuPrecoClient />
     </>
   );
