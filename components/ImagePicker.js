@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 
-const MAX_IMAGE_CHARS = 500000;
+const MAX_IMAGE_CHARS = 2000000;
 
 export default function ImagePicker({ name, initialValue = '', label = 'Imagem' }) {
   const [value, setValue] = useState(initialValue || '');
@@ -23,7 +23,7 @@ export default function ImagePicker({ name, initialValue = '', label = 'Imagem' 
     reader.onload = () => {
       const image = new window.Image();
       image.onload = () => {
-        const maxWidth = 1600;
+        const maxWidth = 2200;
         const scale = Math.min(1, maxWidth / image.width);
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(image.width * scale));
@@ -108,7 +108,7 @@ export default function ImagePicker({ name, initialValue = '', label = 'Imagem' 
           aria-label="Endereço da imagem"
         />
       </details>
-      <p className="muted">As fotos são convertidas para WebP e compactadas automaticamente. Até 8 fotos por produto.</p>
+      <p className="muted">As fotos são convertidas para WebP e compactadas automaticamente. Até 6 fotos por produto.</p>
     </div>
   );
 }
