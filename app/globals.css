@@ -496,3 +496,12 @@ body:has(.admin-nav) .site-footer { display: none; }
 .color-quantity-row input{width:86px;max-width:28vw}
 .add-to-cart-colors{display:flex;flex-direction:column;align-items:stretch;gap:8px}
 .admin-toast-items{font-size:12px;line-height:1.5;margin-top:6px;max-width:420px}
+
+/* Seletor de cores na página pública do produto */
+.color-swatch-picker { display:flex; flex-wrap:wrap; gap:12px; margin:8px 0 14px; }
+.color-swatch-option { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:54px; padding:7px 6px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--gray); cursor:pointer; }
+.color-swatch-option .color-swatch { width:28px; height:28px; flex:0 0 28px; background:var(--swatch-color); }
+.color-swatch-option.selected { border:2px solid var(--yellow-dark); background:var(--yellow-soft); padding:6px 5px; }
+.color-swatch-option:disabled { opacity:.35; cursor:not-allowed; }
+.color-swatch-label { font-size:12px; }
+.color-quantity-row input { min-height:44px; }
