@@ -4,6 +4,7 @@ import { query } from '@/lib/db';
 import { saveProduct } from '../../actions';
 import ImagePicker from '@/components/ImagePicker';
 import ProductColorsEditor from '@/components/ProductColorsEditor';
+import CategoryPicker from '@/components/CategoryPicker';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,14 +68,7 @@ export default async function ProdutoFormPage({ params }) {
             <input id="sku" name="sku" defaultValue={product.sku || ''} />
           </div>
           <div className="field">
-            <label htmlFor="category_ids">Categorias (selecione até 2)</label>
-            <select id="category_ids" name="category_ids" multiple size={Math.min(6, Math.max(3, options.length))}
-              defaultValue={productCategories.map((category) => String(category.category_id))}>
-              {options.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
-              ))}
-            </select>
-            <small className="muted">Escolha uma ou duas categorias. Para selecionar duas no computador, segure Ctrl (ou Command no Mac).</small>
+            <CategoryPicker options={options} initialSelected={productCategories.map((category) => category.category_id)} />
           </div>
         </div>
         <div className="grid2">
