@@ -15,7 +15,7 @@ function normalize(value) {
   return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 }
 function normalizeHeader(value) {
-  return String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+  return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]/g, '');
 }
 function readDescriptionRows(workbook) {
@@ -123,7 +123,7 @@ export default function ImportarSkuPrecoClient() {
         return;
       }
 
-      const rows = readCatalog(matrix);
+      const catalogSheet = workbook.Sheets[workbook.SheetNames[0]];\n      const catalogMatrix = XLSX.utils.sheet_to_json(catalogSheet, { header: 1, defval: '' });\n      const rows = readCatalog(catalogMatrix);
       setMessage('Planilha de catálogo identificada. Conferidos ' + rows.length + ' produtos. Cadastrando no sistema...');
       const response = await fetch('/api/admin/importar-sku-precos', {
         method: 'POST',
