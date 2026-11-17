@@ -3,6 +3,18 @@
 import { useMemo, useState } from 'react';
 
 function abbreviation(name) {
+  const normalized = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR');
+  const colorCodes = {
+    azul: 'AZ',
+    rosa: 'RS',
+    vermelho: 'VM',
+    preto: 'PR',
+    roxo: 'RX',
+    laranja: 'LJ',
+    verde: 'VD',
+    amarelo: 'AM',
+  };
+  if (colorCodes[normalized]) return colorCodes[normalized];
   const parts = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().match(/[A-Z0-9]+/g) || [];
   if (!parts.length) return '';
   return (parts.length > 1 ? parts.map((part) => part[0]).join('') : parts[0].slice(0, 2)).slice(0, 4);
@@ -34,7 +46,8 @@ function normalize(items) {
   return (Array.isArray(items) ? items : []).map((item) => {
     const name = typeof item === 'string' ? item : String(item?.name ?? item?.color ?? item?.cor ?? item?.value ?? item?.label ?? '');
     const code = typeof item === 'object' && item ? String(item.abbreviation || item.sigla || '') : '';
-    return { name: name.trim(), abbreviation: code || abbreviation(name), manualAbbreviation: Boolean(code) };
+    const generatedCode = abbreviation(name);
+    return { name: name.trim(), abbreviation: generatedCode || code || '', manualAbbreviation: Boolean(code && !generatedCode) };
   }).filter((item) => item.name);
 }
 export default function ProductVariantEditor({ initialColors = [], baseSku = '' }) {
