@@ -91,7 +91,7 @@ export async function saveProduct(formData) {
       if (!colorName) return null;
       const suffix = abbreviation || colorName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
       return { name: colorName, abbreviation: suffix, sku: sku ? sku + '-' + suffix : '' };
-    }).filter(Boolean).slice(0, 40);
+    }).filter(Boolean);
   } catch { return; }
 
   const categoryIds = [...new Set(formData.getAll('category_ids').map(Number).filter((value) => Number.isInteger(value) && value > 0))];
