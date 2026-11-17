@@ -40,11 +40,13 @@ export async function POST(request) {
   );
 
   try {
-    const base = process.env.NEXT_PUBLIC_APP_URL
-      ? new URL(process.env.NEXT_PUBLIC_APP_URL).origin
-      : process.env.VERCEL_URL
-        ? 'https://' + process.env.VERCEL_URL
-        : '';
+    const base = process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_URL
+      ? 'https://' + process.env.VERCEL_URL
+      : process.env.NEXT_PUBLIC_APP_URL
+        ? new URL(process.env.NEXT_PUBLIC_APP_URL).origin
+        : process.env.VERCEL_URL
+          ? 'https://' + process.env.VERCEL_URL
+          : '';
     if (!base) throw new Error('URL pública não configurada.');
     const link = base + '/redefinir-senha?token=' + encodeURIComponent(token);
     await sendRecoveryEmail({ to: users[0].email, link });
