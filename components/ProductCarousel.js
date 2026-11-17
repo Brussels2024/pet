@@ -92,6 +92,6 @@ export default function ProductCarousel({ products = [], priorityProducts = [], 
   if (!products.length && !priorityProducts.length) return <p className="muted">Nenhum produto encontrado.</p>;
   return <>
     <ProductRail title="Produtos em destaque" subtitle="Anúncios priorizados pela Brussels Pet." products={featured} showPrice={showPrice} />
-    <ProductRail title="Mais produtos" subtitle="Confira outros produtos da nossa loja." products={regular} showPrice={showPrice} randomize maxProducts={limitGeneral ? 20 : undefined} pageSize={20} listMode controlsAtBottom autoAdvance={false} />
+    <ProductRail title="Mais produtos" subtitle="Confira outros produtos da nossa loja." products={regular} showPrice={showPrice} randomize pageSize={20} listMode controlsAtBottom autoAdvance={false} />
   </>;
 }
