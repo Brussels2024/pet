@@ -274,6 +274,7 @@ export async function approveEmailRecovery(formData) {
   await ensureEmailRecoverySchema();
   const id = Number(formData.get('id'));
   if (!Number.isInteger(id) || id < 1) return;
+  if (formData.get('confirmacao') !== 'on') redirect('/admin/recuperacoes?validacao=1');
 
   const approved = await query(
     'WITH pending AS MATERIALIZED (' +
