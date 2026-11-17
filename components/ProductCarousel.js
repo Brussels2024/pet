@@ -14,15 +14,18 @@ function shuffle(items) {
   return copy;
 }
 
-export function ProductRail({ title, subtitle, products, showPrice, randomize = false }) {
+export function ProductRail({ title, subtitle, products, showPrice, randomize = false, maxProducts }) {
   const [page, setPage] = useState(0);
   const [randomProducts, setRandomProducts] = useState(products);
   const ordered = randomize ? randomProducts : products;
   const pages = Math.max(1, Math.ceil(ordered.length / 4));
 
   useEffect(() => {
-    if (randomize) setRandomProducts(shuffle(products));
-  }, [products, randomize]);
+    if (randomize) {
+      const shuffled = shuffle(products);
+      setRandomProducts(Number.isInteger(maxProducts) ? shuffled.slice(0, maxProducts) : shuffled);
+    }
+  }, [products, randomize, maxProducts]);
 
   useEffect(() => {
     setPage(0);
@@ -92,10 +95,17 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
   );
 }
 
-export default function ProductCarousel({ products = [], priorityProducts = [], showPrice }) {
+export default function ProductCarousel({
+  products = [],
+  priorityProducts = [],
+  excludedIds = [],
+  limitGeneral = false,
+  showPrice,
+}) {
   const featured = useMemo(() => priorityProducts.slice(0, 8), [priorityProducts]);
   const featuredIds = new Set(featured.map((product) => product.id));
-  const regular = products.filter((product) => !featuredIds.has(product.id));
+  const excluded = new Set([...featuredIds, ...excludedIds]);
+  const regular = products.filter((product) => !excluded.has(product.id));
 
   if (!products.length && !priorityProducts.length) {
     return <p className="muted">Nenhum produto encontrado.</p>;
@@ -110,11 +120,12 @@ export default function ProductCarousel({ products = [], priorityProducts = [], 
         showPrice={showPrice}
       />
       <ProductRail
-        title={featured.length ? 'Mais produtos' : 'Produtos'}
+        title="Mais produtos"
         subtitle="Confira outros produtos da nossa loja."
         products={regular}
         showPrice={showPrice}
         randomize
+        maxProducts={limitGeneral ? 20 : undefined}
       />
     </>
   );
