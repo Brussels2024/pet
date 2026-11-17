@@ -176,11 +176,13 @@ export async function POST(request) {
   );
   if (products.length !== productIds.length || products.some(p => !p.active)) return fail('Um dos produtos do carrinho não está mais disponível.');
   const colorIds = lines.filter(line => line.colorId !== null).map(line => line.colorId);
-  const colors = colorIds.length ? await query(
-    'SELECT id, product_id, name, sku, stock FROM product_colors WHERE id = ANY($1::int[])',
-    [colorIds]
+  const colors = productIds.length ? await query(
+    'SELECT id, product_id, name, sku, stock, min_stock FROM product_colors WHERE product_id = ANY($1::int[])',
+    [productIds]
   ) : [];
-  if (colors.length !== colorIds.length) return fail('Uma das cores escolhidas não está mais disponível.');
+  if (colorIds.some(colorId => !colors.some(color => Number(color.id) === colorId))) {
+    return fail('Uma das cores escolhidas não está mais disponível.');
+  }
   for (const line of lines) {
     const product = products.find(p => p.id === line.productId);
     if (line.colorId !== null) {
@@ -198,6 +200,17 @@ export async function POST(request) {
       line.colorSku = null;
     }
   }
+  for (const product of products) {
+    const productColors = colors.filter(color => Number(color.product_id) === Number(product.id));
+    const minRequired = Math.max(0, ...productColors.map(color => Number(color.min_stock) || 0));
+    const orderedQty = lines
+      .filter(line => line.productId === product.id)
+      .reduce((sum, line) => sum + line.qty, 0);
+    if (minRequired > 0 && orderedQty < minRequired) {
+      return fail(`A quantidade mínima de "${product.name}" é de ${minRequired} unidades. O carrinho contém ${orderedQty}.`, 422);
+    }
+  }
+
   const total = lines.reduce((sum, line) => {
     const product = products.find(p => p.id === line.productId);
     return sum + Number(product.price) * line.qty;
