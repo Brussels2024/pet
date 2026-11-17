@@ -9,6 +9,24 @@ function variantsOf(value) {
   }).filter((item) => item.name);
 }
 
+
+function colorHex(name) {
+  const key = String(name || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim();
+  const colors = {
+    branco: '#ffffff', branca: '#ffffff', white: '#ffffff',
+    preto: '#171717', preta: '#171717', black: '#171717',
+    roxo: '#7e3fb2', roxa: '#7e3fb2', lilas: '#b78ad5', violeta: '#7f00ff',
+    amarelo: '#f4d21f', amarela: '#f4d21f',
+    azul: '#2375d8', 'azul claro': '#83c9f4', 'azul marinho': '#142d57',
+    vermelho: '#e53935', vermelha: '#e53935', rosa: '#ed78a8',
+    verde: '#269653', verde: '#269653', laranja: '#f28c28',
+    cinza: '#929292', cinza: '#929292', marrom: '#80543b',
+    dourado: '#c9a227', prata: '#c0c0c0', bege: '#d9c3a0',
+    transparente: 'linear-gradient(135deg, #fff 0 45%, #bbb 45% 55%, #fff 55%)'
+  };
+  return colors[key] || '#a0a0a0';
+}
+
 export default function AddToCart({ product }) {
   const minimum = Math.max(1, Number(product.min_quantity) || 1);
   const variants = variantsOf(product.colors);
@@ -45,13 +63,27 @@ export default function AddToCart({ product }) {
   return (
     <div className="add-row" style={{ flexWrap: 'wrap' }}>
       {variants.length > 0 && (
-        <label className="field" style={{ minWidth: 150, flex: 1 }}>
-          <span>Cor</span>
-          <select value={color} onChange={(e) => setColor(e.target.value)} aria-label="Escolha a cor">
-            {variants.map((item) => <option key={item.name} value={item.name}>{item.name} ({item.abbreviation})</option>)}
-          </select>
-          {selected && <small className="muted">Cor: {selected.name} ({selected.abbreviation}) · SKU: {variantSku}</small>}
-        </label>
+        <div className="field color-variant-picker" style={{ minWidth: 150, flex: 1 }}>
+          <span className="color-variant-title">Escolha a cor</span>
+          <div className="color-variant-swatches" role="group" aria-label="Escolha a cor">
+            {variants.map((item) => (
+              <button
+                key={item.name}
+                type="button"
+                className={`color-variant-swatch${color === item.name ? ' selected' : ''}`}
+                style={{ '--swatch-color': colorHex(item.name) }}
+                onClick={() => setColor(item.name)}
+                aria-label={item.name}
+                aria-pressed={color === item.name}
+                title={item.name}
+              />
+            ))}
+          </div>
+          {selected && <div className="color-variant-summary">
+            <strong>{selected.name} ({selected.abbreviation})</strong>
+            <span>SKU: {variantSku}</span>
+          </div>}
+        </div>
       )}
       <label className="field" style={{ minWidth: 110 }}>
         <span>Quantidade (mín. {minimum})</span>
