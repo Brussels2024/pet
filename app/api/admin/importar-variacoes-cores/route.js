@@ -6,8 +6,24 @@ import { requireAdmin } from '@/lib/auth';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function colorName(item) {
+  if (typeof item === 'string') return item.trim();
+  return String(item?.name ?? item?.color ?? item?.cor ?? item?.value ?? item?.label ?? '').trim();
+}
 function normalize(value) {
-  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
+  return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('pt-BR');
+}
+function parseColors(value) {
+  if (typeof value === 'string') {
+    try { value = JSON.parse(value); } catch { value = []; }
+  }
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === 'object') {
+    for (const key of ['colors', 'cores', 'variations', 'variacoes', 'items']) {
+      if (Array.isArray(value[key])) return value[key];
+    }
+  }
+  return [];
 }
 function abbreviation(name) {
   const parts = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().match(/[A-Z0-9]+/g) || [];
@@ -46,13 +62,13 @@ export async function POST(request) {
       }
       matched++;
       const product = products[0];
-      let current = product.colors;
-      if (typeof current === 'string') {
-        try { current = JSON.parse(current); } catch { current = []; }
-      }
-      current = Array.isArray(current) ? current : [];
-      const merged = [...current];
-      const known = new Set(current.map((item) => normalize(typeof item === 'string' ? item : item?.name)));
+      const current = parseColors(product.colors);
+      const merged = current.map((item) => {
+        const name = colorName(item);
+        if (!name || typeof item === 'string') return name || item;
+        return { ...item, name };
+      }).filter((item) => colorName(item));
+      const known = new Set(merged.map((item) => normalize(colorName(item))));
       let productAdded = 0;
       for (const name of colors) {
         const key = normalize(name);
@@ -63,24 +79,20 @@ export async function POST(request) {
         productAdded++;
         added++;
       }
-      if (productAdded) {
-        const saved = await query(
-          'UPDATE products SET colors = $1::jsonb WHERE id = $2 RETURNING colors',
-          [JSON.stringify(merged), product.id]
-        );
-        let persisted = saved[0]?.colors;
-        if (typeof persisted === 'string') {
-          try { persisted = JSON.parse(persisted); } catch { persisted = []; }
-        }
-        const persistedNames = new Set(
-          (Array.isArray(persisted) ? persisted : []).map((item) =>
-            normalize(typeof item === 'string' ? item : item?.name)
-          )
-        );
-        const confirmed = colors.filter((name) => persistedNames.has(normalize(name))).length;
-        if (confirmed < merged.length - current.length) {
-          throw new Error('Não foi possível confirmar a gravação das cores da SKU ' + sku + '.');
-        }
+      // Sempre grava e confirma a lista completa, inclusive se a planilha já foi importada.
+      const saved = await query(
+        'UPDATE products SET colors = $1::jsonb WHERE id = $2 RETURNING colors',
+        [JSON.stringify(merged), product.id]
+      );
+      if (!saved.length) throw new Error('O produto da SKU ' + sku + ' não foi atualizado.');
+      const persisted = parseColors(saved[0]?.colors);
+      const persistedNames = new Set(persisted.map((item) => normalize(colorName(item))).filter(Boolean));
+      const missing = colors.filter((name) => !persistedNames.has(normalize(name)));
+      if (missing.length) {
+        throw new Error('A gravação das cores da SKU ' + sku + ' não foi confirmada (' + missing.length + ' cor(es) ausente(s)).');
+      }
+      if (persisted.length !== merged.length) {
+        throw new Error('A lista de cores da SKU ' + sku + ' foi gravada incompleta.');
       }
       revalidatePath('/admin/produtos/' + product.id);
       revalidatePath('/produto/' + product.id);
@@ -88,7 +100,7 @@ export async function POST(request) {
     revalidatePath('/admin/produtos');
     revalidatePath('/admin/importar-sku-precos');
     revalidatePath('/');
-    return NextResponse.json({ total: rows.length, matched, added, unchanged, notFound, ambiguous, details });
+    return NextResponse.json({ total: rows.length, matched, added, unchanged, notFound, ambiguous, saved: matched - ambiguous - notFound, details });
   } catch (error) {
     const message = error?.message || 'Não foi possível importar as variações.';
     const status = /admin|autoriz/i.test(message) ? 403 : 500;
