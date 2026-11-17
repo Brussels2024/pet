@@ -49,8 +49,7 @@ export default async function Home({ searchParams }) {
     `SELECT p.id, p.name, p.description, p.sku, p.price, p.stock, p.image_url, p.priority
      FROM products p
      WHERE ${where.join(' AND ')}
-     ORDER BY p.priority DESC, p.name
-     LIMIT 500`,
+     ORDER BY p.priority DESC, p.name`,
     params
   );
 
