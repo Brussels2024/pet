@@ -11,7 +11,7 @@ function colorName(item) {
   return String(item?.name ?? item?.color ?? item?.cor ?? item?.value ?? item?.label ?? '').trim();
 }
 function normalize(value) {
-  return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('pt-BR');
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 }
 function parseColors(value) {
   if (typeof value === 'string') {
