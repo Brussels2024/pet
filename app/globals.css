@@ -296,7 +296,8 @@ body:has(.admin-nav) .site-header,
 body:has(.admin-nav) .site-footer { display: none; }
 
 /* Galeria de fotos e página de detalhes do produto */
-.product-detail-link { display: flex; flex-direction: column; color: inherit; }
+.product-detail-link { display: flex; flex-direction: column; width: 100%; color: inherit; cursor: pointer; }
+.product-detail-link > * { pointer-events: none; }
 .product-detail-link:hover { text-decoration: none; }
 .product-detail-link .info { padding-bottom: 4px; }
 .product-purchase-info { padding-top: 4px !important; }
