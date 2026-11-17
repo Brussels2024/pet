@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
+import ImportarVariacoesCores from '@/components/ImportarVariacoesCores';
 
 function parseNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -94,6 +95,7 @@ export default function ImportarSkuPrecoClient() {
   }
 
   return (
+    <>
     <section className="card" style={{ maxWidth: 760 }}>
       <h2>Importar catálogo completo por planilha</h2>
       <p className="muted">Importa os produtos da tabela original, criando os que ainda não existem e atualizando os que já possuem o mesmo SKU e nome. Lê nome, código, preço unitário, quantidade mínima, preço do pacote, categoria e cores.</p>
@@ -115,5 +117,7 @@ export default function ImportarSkuPrecoClient() {
       </div>}
       <p className="muted" style={{ marginTop: 16 }}>Produtos novos entram sem fotos para que você possa adicionar as imagens depois. Reimportar a tabela não zera o estoque nem apaga fotos de produtos existentes.</p>
     </section>
+    <ImportarVariacoesCores />
+    </>
   );
 }
