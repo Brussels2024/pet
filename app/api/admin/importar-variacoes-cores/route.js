@@ -46,7 +46,11 @@ export async function POST(request) {
       }
       matched++;
       const product = products[0];
-      const current = Array.isArray(product.colors) ? product.colors : [];
+      let current = product.colors;
+      if (typeof current === 'string') {
+        try { current = JSON.parse(current); } catch { current = []; }
+      }
+      current = Array.isArray(current) ? current : [];
       const merged = [...current];
       const known = new Set(current.map((item) => normalize(typeof item === 'string' ? item : item?.name)));
       let productAdded = 0;
@@ -60,8 +64,26 @@ export async function POST(request) {
         added++;
       }
       if (productAdded) {
-        await query('UPDATE products SET colors = $1::jsonb WHERE id = $2', [JSON.stringify(merged), product.id]);
+        const saved = await query(
+          'UPDATE products SET colors = $1::jsonb WHERE id = $2 RETURNING colors',
+          [JSON.stringify(merged), product.id]
+        );
+        let persisted = saved[0]?.colors;
+        if (typeof persisted === 'string') {
+          try { persisted = JSON.parse(persisted); } catch { persisted = []; }
+        }
+        const persistedNames = new Set(
+          (Array.isArray(persisted) ? persisted : []).map((item) =>
+            normalize(typeof item === 'string' ? item : item?.name)
+          )
+        );
+        const confirmed = colors.filter((name) => persistedNames.has(normalize(name))).length;
+        if (confirmed < merged.length - current.length) {
+          throw new Error('Não foi possível confirmar a gravação das cores da SKU ' + sku + '.');
+        }
       }
+      revalidatePath('/admin/produtos/' + product.id);
+      revalidatePath('/produto/' + product.id);
     }
     revalidatePath('/admin/produtos');
     revalidatePath('/admin/importar-sku-precos');
