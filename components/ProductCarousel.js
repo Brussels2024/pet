@@ -26,11 +26,11 @@ function ProductPhoto({ product }) {
   return <div className="photo">{images.length ? <img src={images[active] || images[0]} alt={product.name} loading="lazy" /> : 'Sem foto'}</div>;
 }
 
-export function ProductRail({ title, subtitle, products, showPrice, randomize = false, maxProducts }) {
+export function ProductRail({ title, subtitle, products, showPrice, randomize = false, maxProducts, pageSize = 4, listMode = false, controlsAtBottom = false, autoAdvance = true }) {
   const [page, setPage] = useState(0);
   const [randomProducts, setRandomProducts] = useState(products);
   const ordered = randomize ? randomProducts : products;
-  const pages = Math.max(1, Math.ceil(ordered.length / 4));
+  const pages = Math.max(1, Math.ceil(ordered.length / pageSize));
 
   useEffect(() => {
     if (randomize) {
@@ -41,26 +41,26 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
 
   useEffect(() => { setPage(0); }, [products.length, title]);
   useEffect(() => {
-    if (pages < 2) return;
+    if (!autoAdvance || pages < 2) return;
     const timer = window.setInterval(() => setPage((current) => (current + 1) % pages), 10000);
     return () => window.clearInterval(timer);
-  }, [pages]);
+  }, [pages, autoAdvance]);
 
   if (!ordered.length) return null;
-  const visible = ordered.slice(page * 4, page * 4 + 4);
+  const visible = ordered.slice(page * pageSize, page * pageSize + pageSize);
   const move = (direction) => setPage((current) => (current + direction + pages) % pages);
 
   return (
     <section className="product-showcase" aria-label={title}>
       <div className="showcase-heading">
         <div><h2>{title}</h2>{subtitle && <p className="muted">{subtitle}</p>}</div>
-        {pages > 1 && <div className="showcase-controls">
-          <button type="button" onClick={() => move(-1)} aria-label="Quatro produtos anteriores">‹</button>
+        {pages > 1 && !controlsAtBottom && <div className="showcase-controls">
+          <button type="button" onClick={() => move(-1)} aria-label="Página anterior de produtos">‹</button>
           <span>{page + 1} / {pages}</span>
-          <button type="button" onClick={() => move(1)} aria-label="Próximos quatro produtos">›</button>
+          <button type="button" onClick={() => move(1)} aria-label="Próxima página de produtos">›</button>
         </div>}
       </div>
-      <div className="products showcase-products">
+      <div className={`products showcase-products${listMode ? " showcase-products-list" : ""}`}>
         {visible.map((p) => (
           <article className="product" key={p.id}>
             <Link className="product-detail-link" href={'/produto/' + p.id} aria-label={'Ver detalhes de ' + p.name}>
@@ -76,6 +76,11 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
           </article>
         ))}
       </div>
+      {pages > 1 && controlsAtBottom && <div className="showcase-controls showcase-controls-bottom">
+        <button type="button" onClick={() => move(-1)} aria-label="Produtos anteriores">‹</button>
+        <span>{page + 1} / {pages}</span>
+        <button type="button" onClick={() => move(1)} aria-label="Próximos produtos">›</button>
+      </div>}
     </section>
   );
 }
@@ -87,6 +92,6 @@ export default function ProductCarousel({ products = [], priorityProducts = [], 
   if (!products.length && !priorityProducts.length) return <p className="muted">Nenhum produto encontrado.</p>;
   return <>
     <ProductRail title="Produtos em destaque" subtitle="Anúncios priorizados pela Brussels Pet." products={featured} showPrice={showPrice} />
-    <ProductRail title="Mais produtos" subtitle="Confira outros produtos da nossa loja." products={regular} showPrice={showPrice} randomize maxProducts={limitGeneral ? 20 : undefined} />
+    <ProductRail title="Mais produtos" subtitle="Confira outros produtos da nossa loja." products={regular} showPrice={showPrice} randomize maxProducts={limitGeneral ? 20 : undefined} pageSize={20} listMode controlsAtBottom autoAdvance={false} />
   </>;
 }
