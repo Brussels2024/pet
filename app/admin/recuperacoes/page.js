@@ -25,16 +25,16 @@ export default async function RecuperacoesPage({ searchParams }) {
       <p className="muted">Revise os dados da empresa antes de aprovar a alteração. A aprovação atualiza o e-mail e a senha da conta; a senha é armazenada apenas como hash.</p>
 
       {params?.erro && (
-        <div className="msg warn" role="alert">
+        <div className="msg error" role="alert">
           Não foi possível aprovar. A solicitação pode não existir mais ou o novo e-mail já pode estar vinculado a outra conta.
         </div>
       )}
-      {params?.sucesso && <div className="msg warn" role="status">Solicitação aprovada. O cliente já pode entrar com os novos dados.</div>}
+      {params?.sucesso && <div className="msg ok" role="status">Solicitação aprovada. O cliente já pode entrar com os novos dados.</div>}
 
       {requests.length === 0 ? (
         <div className="card"><p className="muted">Não há solicitações aguardando análise.</p></div>
       ) : (
-        <div className="grid-cards">
+        <div className="banner-admin-grid">
           {requests.map((item) => (
             <section className="card" key={item.id}>
               <h2>Solicitação #{item.id}</h2>
