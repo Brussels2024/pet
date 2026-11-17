@@ -18,6 +18,10 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 });
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 });
+  }
+
   const email = String(body.email || '').trim().toLowerCase();
   const at = email.indexOf('@');
   if (at < 1 || at === email.length - 1 || email.lastIndexOf('.') <= at + 1 || email.includes(' ') || email.length > 254) {
