@@ -11,7 +11,6 @@ export default function CartClient({ minOrder, status }) {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [checkoutKey, setCheckoutKey] = useState('');
 
   useEffect(() => {
     try {
@@ -24,7 +23,6 @@ export default function CartClient({ minOrder, status }) {
 
   function save(next) {
     setCart(next);
-    setCheckoutKey('');
     try {
       localStorage.setItem('bp_cart', JSON.stringify(next));
       window.dispatchEvent(new Event('cart-changed'));
@@ -35,12 +33,32 @@ export default function CartClient({ minOrder, status }) {
 
   const changeQty = (id, value) => {
     const qty = Math.max(1, Math.floor(Number(value) || 1));
-    save(cart.map((i) => (i.id === id ? { ...i, qty } : i)));
+    save(cart.map(item => (item.id === id ? { ...item, qty } : item)));
   };
-  const remove = (id) => save(cart.filter((i) => i.id !== id));
 
-  const total = cart.reduce((sum, i) => sum + Number(i.price) * i.qty, 0);
+  const remove = id => save(cart.filter(item => item.id !== id));
+
+  const removeVariant = (id, colorId) => {
+    const next = cart.flatMap(item => {
+      if (item.id !== id || !Array.isArray(item.variants)) return [item];
+      const variants = item.variants.filter(variant => variant.colorId !== colorId);
+      if (!variants.length) return [];
+      return [{
+        ...item,
+        variants,
+        qty: variants.reduce((sum, variant) => sum + Number(variant.qty || 0), 0),
+      }];
+    });
+    save(next);
+  };
+
+  const total = cart.reduce((sum, item) => sum + Number(item.price) * Number(item.qty), 0);
   const belowMin = total < minOrder;
+  const rows = cart.flatMap(item => (
+    Array.isArray(item.variants) && item.variants.length
+      ? item.variants.map(variant => ({ ...item, variant, rowKey: item.id + '-' + variant.colorId }))
+      : [{ ...item, variant: null, rowKey: String(item.id) }]
+  ));
 
   function finish() {
     try { sessionStorage.setItem('bp_checkout_notes', notes); } catch {}
@@ -70,19 +88,44 @@ export default function CartClient({ minOrder, status }) {
             </tr>
           </thead>
           <tbody>
-            {cart.map((i) => (
-              <tr key={i.id}>
-                <td>{i.name}{Array.isArray(i.variants) && i.variants.length > 0 && <div className="muted">{i.variants.map(v => <div key={v.colorId}>• {v.color} (SKU {v.colorSku || '—'}): {v.qty} un.</div>)}</div>}</td>
-                <td>{brl(i.price)}</td>
-                <td style={{ width: 100 }}>{Array.isArray(i.variants) && i.variants.length > 0 ? <b>{i.qty}</b> : <input type="number" min="1" value={i.qty} onChange={(e) => changeQty(i.id, e.target.value)} />}</td>
-                <td>{brl(Number(i.price) * i.qty)}</td>
-                <td>
-                  <button type="button" className="btn small outline" onClick={() => remove(i.id)}>
-                    Remover
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {rows.map(item => {
+              const variant = item.variant;
+              const lineQty = variant ? Number(variant.qty) : Number(item.qty);
+              return (
+                <tr key={item.rowKey}>
+                  <td>
+                    <b>{item.name}</b>
+                    {variant && (
+                      <div className="muted">
+                        Cor: {variant.color}
+                        {variant.colorSku ? ' · SKU: ' + variant.colorSku : ''}
+                      </div>
+                    )}
+                  </td>
+                  <td>{brl(item.price)}</td>
+                  <td style={{ width: 100 }}>
+                    {variant ? <b>{lineQty}</b> : (
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.qty}
+                        onChange={event => changeQty(item.id, event.target.value)}
+                      />
+                    )}
+                  </td>
+                  <td>{brl(Number(item.price) * lineQty)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn small outline"
+                      onClick={() => variant ? removeVariant(item.id, variant.colorId) : remove(item.id)}
+                    >
+                      Remover
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -101,12 +144,8 @@ export default function CartClient({ minOrder, status }) {
         )}
 
         <div className="field">
-          <label>Pagamento</label>
-          <p className="muted">Pagamento seguro pelo Asaas. Na próxima etapa, você poderá escolher uma das modalidades habilitadas na conta: Pix, boleto ou cartão de crédito.</p>
-        </div>
-        <div className="field">
           <label htmlFor="notes">Observações</label>
-          <textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <textarea id="notes" rows={3} value={notes} onChange={event => setNotes(event.target.value)} />
         </div>
 
         {status === 'guest' && (
