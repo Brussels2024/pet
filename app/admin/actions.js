@@ -264,3 +264,45 @@ export async function deleteShippingCity(formData) {
   await query('DELETE FROM shipping_cities WHERE id = $1', [id]);
   revalidatePath('/admin/configuracoes/frete');
 }
+
+
+/* ---------- Vitrines por linha ---------- */
+export async function createFeaturedCollection(formData) {
+  await requireAdmin();
+  const title = text(formData, 'title').slice(0, 80);
+  if (!title) return;
+  const rows = await query('SELECT COALESCE(MAX(position), 0) + 1 AS next FROM featured_collections');
+  await query('INSERT INTO featured_collections (title, position, active) VALUES ($1, $2, true)', [title, rows[0].next]);
+  revalidatePath('/admin/vitrines');
+  revalidatePath('/');
+}
+
+export async function saveFeaturedCollection(formData) {
+  await requireAdmin();
+  const id = Number(formData.get('id'));
+  const title = text(formData, 'title').slice(0, 80);
+  const active = formData.get('active') === 'on';
+  if (!Number.isInteger(id) || id < 1 || !title) return;
+  const exists = await query('SELECT id FROM featured_collections WHERE id = $1', [id]);
+  if (!exists.length) return;
+  const productIds = [...new Set(formData.getAll('product_ids').map(Number).filter((value) => Number.isInteger(value) && value > 0))];
+  await query('UPDATE featured_collections SET title = $1, active = $2 WHERE id = $3', [title, active, id]);
+  await query('DELETE FROM featured_collection_products WHERE collection_id = $1', [id]);
+  for (let i = 0; i < productIds.length; i++) {
+    await query(
+      'INSERT INTO featured_collection_products (collection_id, product_id, position) SELECT $1, id, $3 FROM products WHERE id = $2 AND active = true ON CONFLICT (collection_id, product_id) DO NOTHING',
+      [id, productIds[i], i + 1]
+    );
+  }
+  revalidatePath('/admin/vitrines');
+  revalidatePath('/');
+}
+
+export async function deleteFeaturedCollection(formData) {
+  await requireAdmin();
+  const id = Number(formData.get('id'));
+  if (!Number.isInteger(id) || id < 1) return;
+  await query('DELETE FROM featured_collections WHERE id = $1', [id]);
+  revalidatePath('/admin/vitrines');
+  revalidatePath('/');
+}
