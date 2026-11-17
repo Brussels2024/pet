@@ -78,7 +78,7 @@ export default async function ProductDetailPage({ params }) {
                   stock: Number(product.stock),
                   image_url: images[0] || '',
                   min_quantity: Number(product.min_quantity) || 1,
-                  colors: Array.isArray(product.colors) ? product.colors : [],
+                  colors: productColors,
                 }}
               />
             </div>
