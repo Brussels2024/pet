@@ -49,7 +49,7 @@ export default async function Home({ searchParams }) {
                   SELECT 1 FROM featured_categories fc
                   WHERE fc.active = true AND fc.category_id = p.category_id
                 )
-              ORDER BY random() LIMIT 20`),
+              ORDER BY random() LIMIT 500`),
     ]);
   } else {
     const where = ['p.active = true'];
