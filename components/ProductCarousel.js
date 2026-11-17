@@ -16,14 +16,29 @@ function shuffle(items) {
 
 export function ProductRail({ title, subtitle, products, showPrice, randomize = false }) {
   const [randomProducts, setRandomProducts] = useState(products);
+  const [page, setPage] = useState(0);
   const ordered = randomize ? randomProducts : products;
+  const pageSize = randomize ? 25 : ordered.length;
+  const pageCount = Math.max(1, Math.ceil(ordered.length / pageSize));
+  const visibleProducts = randomize
+    ? ordered.slice(page * pageSize, (page + 1) * pageSize)
+    : ordered;
 
   useEffect(() => {
     if (randomize) setRandomProducts(shuffle(products));
     else setRandomProducts(products);
+    setPage(0);
   }, [products, randomize]);
 
+  useEffect(() => {
+    if (page >= pageCount) setPage(Math.max(0, pageCount - 1));
+  }, [page, pageCount]);
+
   if (!ordered.length) return null;
+
+  const movePage = (direction) => {
+    setPage((current) => Math.min(pageCount - 1, Math.max(0, current + direction)));
+  };
 
   return (
     <section className="product-showcase" aria-label={title}>
@@ -34,7 +49,7 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
         </div>
       </div>
       <div className="products showcase-products">
-        {ordered.map((p) => (
+        {visibleProducts.map((p) => (
           <article className="product" key={p.id}>
             <Link className="product-detail-link" href={'/produto/' + p.id} aria-label={'Ver detalhes de ' + p.name}>
               <div className="photo">
@@ -66,6 +81,13 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
           </article>
         ))}
       </div>
+      {randomize && pageCount > 1 && (
+        <nav className="showcase-pagination" aria-label="Páginas de mais produtos">
+          <button type="button" onClick={() => movePage(-1)} disabled={page === 0} aria-label="Página anterior">‹</button>
+          <span>Página {page + 1} de {pageCount}</span>
+          <button type="button" onClick={() => movePage(1)} disabled={page === pageCount - 1} aria-label="Próxima página">›</button>
+        </nav>
+      )}
     </section>
   );
 }
