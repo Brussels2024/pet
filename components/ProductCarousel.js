@@ -14,6 +14,18 @@ function shuffle(items) {
   return copy;
 }
 
+function ProductPhoto({ product }) {
+  const images = Array.isArray(product.images) && product.images.length ? product.images : (product.image_url ? [product.image_url] : []);
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    setActive(0);
+    if (images.length < 2) return;
+    const timer = window.setInterval(() => setActive((current) => (current + 1) % images.length), 5000);
+    return () => window.clearInterval(timer);
+  }, [images.length, product.id]);
+  return <div className="photo">{images.length ? <img src={images[active] || images[0]} alt={product.name} loading="lazy" /> : 'Sem foto'}</div>;
+}
+
 export function ProductRail({ title, subtitle, products, showPrice, randomize = false, maxProducts }) {
   const [page, setPage] = useState(0);
   const [randomProducts, setRandomProducts] = useState(products);
@@ -24,18 +36,13 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
     if (randomize) {
       const shuffled = shuffle(products);
       setRandomProducts(Number.isInteger(maxProducts) ? shuffled.slice(0, maxProducts) : shuffled);
-    }
+    } else setRandomProducts(products);
   }, [products, randomize, maxProducts]);
 
-  useEffect(() => {
-    setPage(0);
-  }, [products.length]);
-
+  useEffect(() => { setPage(0); }, [products.length, title]);
   useEffect(() => {
     if (pages < 2) return;
-    const timer = window.setInterval(() => {
-      setPage((current) => (current + 1) % pages);
-    }, 10000);
+    const timer = window.setInterval(() => setPage((current) => (current + 1) % pages), 10000);
     return () => window.clearInterval(timer);
   }, [pages]);
 
@@ -46,47 +53,25 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
   return (
     <section className="product-showcase" aria-label={title}>
       <div className="showcase-heading">
-        <div>
-          <h2>{title}</h2>
-          {subtitle && <p className="muted">{subtitle}</p>}
-        </div>
-        {pages > 1 && (
-          <div className="showcase-controls">
-            <button type="button" onClick={() => move(-1)} aria-label="Quatro produtos anteriores">‹</button>
-            <span>{page + 1} / {pages}</span>
-            <button type="button" onClick={() => move(1)} aria-label="Próximos quatro produtos">›</button>
-          </div>
-        )}
+        <div><h2>{title}</h2>{subtitle && <p className="muted">{subtitle}</p>}</div>
+        {pages > 1 && <div className="showcase-controls">
+          <button type="button" onClick={() => move(-1)} aria-label="Quatro produtos anteriores">‹</button>
+          <span>{page + 1} / {pages}</span>
+          <button type="button" onClick={() => move(1)} aria-label="Próximos quatro produtos">›</button>
+        </div>}
       </div>
       <div className="products showcase-products">
         {visible.map((p) => (
           <article className="product" key={p.id}>
             <Link className="product-detail-link" href={'/produto/' + p.id} aria-label={'Ver detalhes de ' + p.name}>
-              <div className="photo">
-                {p.image_url ? <img src={p.image_url} alt={p.name} loading="lazy" /> : 'Sem foto'}
-              </div>
-              <div className="info">
-                <div className="name">{p.name}</div>
-                {p.sku && <div className="sku">Cód. {p.sku}</div>}
-              </div>
+              <ProductPhoto product={p} />
+              <div className="info"><div className="name">{p.name}</div>{p.sku && <div className="sku">Cód. {p.sku}</div>}</div>
             </Link>
             <div className="info product-purchase-info">
-              {showPrice ? (
-                <>
-                  <div className="price">{brl(p.price)}</div>
-                  <AddToCart
-                    product={{
-                      id: p.id,
-                      name: p.name,
-                      price: Number(p.price),
-                      stock: Number(p.stock),
-                      image_url: p.image_url,
-                    }}
-                  />
-                </>
-              ) : (
-                <div className="price-locked">Preço visível após cadastro empresarial aprovado</div>
-              )}
+              {showPrice ? <>
+                <div className="price">{brl(p.price)}</div>
+                <AddToCart product={{ id: p.id, name: p.name, sku: p.sku, price: Number(p.price), stock: Number(p.stock), image_url: p.image_url, colors: p.colors || [] }} />
+              </> : <div className="price-locked">Preço visível após cadastro empresarial aprovado</div>}
             </div>
           </article>
         ))}
@@ -95,38 +80,13 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
   );
 }
 
-export default function ProductCarousel({
-  products = [],
-  priorityProducts = [],
-  excludedIds = [],
-  limitGeneral = false,
-  showPrice,
-}) {
+export default function ProductCarousel({ products = [], priorityProducts = [], excludedIds = [], limitGeneral = false, showPrice }) {
   const featured = useMemo(() => priorityProducts.slice(0, 8), [priorityProducts]);
-  const featuredIds = new Set(featured.map((product) => product.id));
-  const excluded = new Set([...featuredIds, ...excludedIds]);
+  const excluded = new Set([...featured.map((product) => product.id), ...excludedIds]);
   const regular = products.filter((product) => !excluded.has(product.id));
-
-  if (!products.length && !priorityProducts.length) {
-    return <p className="muted">Nenhum produto encontrado.</p>;
-  }
-
-  return (
-    <>
-      <ProductRail
-        title="Produtos em destaque"
-        subtitle="Anúncios priorizados pela Brussels Pet."
-        products={featured}
-        showPrice={showPrice}
-      />
-      <ProductRail
-        title="Mais produtos"
-        subtitle="Confira outros produtos da nossa loja."
-        products={regular}
-        showPrice={showPrice}
-        randomize
-        maxProducts={limitGeneral ? 20 : undefined}
-      />
-    </>
-  );
+  if (!products.length && !priorityProducts.length) return <p className="muted">Nenhum produto encontrado.</p>;
+  return <>
+    <ProductRail title="Produtos em destaque" subtitle="Anúncios priorizados pela Brussels Pet." products={featured} showPrice={showPrice} />
+    <ProductRail title="Mais produtos" subtitle="Confira outros produtos da nossa loja." products={regular} showPrice={showPrice} randomize maxProducts={limitGeneral ? 20 : undefined} />
+  </>;
 }

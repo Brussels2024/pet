@@ -78,13 +78,15 @@ export async function POST(request) {
           'UPDATE products SET name = $1, sku = $2, price = $3, package_price = $4, min_quantity = $5, colors = $6::jsonb, category_id = $7 WHERE id = $8',
           [name, sku, price.toFixed(2), packagePrice.toFixed(2), minQuantity, JSON.stringify(colors), categoryId, existing[0].id]
         );
+        await query('INSERT INTO product_categories (product_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [existing[0].id, categoryId]);
         updated++;
       } else {
         // Todo produto novo começa com 1.000 unidades; imagens ficam vazias para inclusão posterior.
-        await query(
-          'INSERT INTO products (name, sku, price, package_price, min_quantity, colors, stock, image_url, category_id, active) VALUES ($1, $2, $3, $4, $5, $6::jsonb, 1000, NULL, $7, true)',
+        const inserted = await query(
+          'INSERT INTO products (name, sku, price, package_price, min_quantity, colors, stock, image_url, category_id, active) VALUES ($1, $2, $3, $4, $5, $6::jsonb, 1000, NULL, $7, true) RETURNING id',
           [name, sku, price.toFixed(2), packagePrice.toFixed(2), minQuantity, JSON.stringify(colors), categoryId]
         );
+        if (inserted[0]?.id) await query('INSERT INTO product_categories (product_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [inserted[0].id, categoryId]);
         created++;
       }
     }

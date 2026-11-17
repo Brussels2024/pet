@@ -25,6 +25,12 @@ export default async function ProductDetailPage({ params }) {
   if (!rows.length) notFound();
 
   const product = rows[0];
+  const categoryRows = await query(
+    'SELECT c.name FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = $1 ORDER BY c.position, c.name',
+    [productId]
+  );
+  const categoryNames = categoryRows.map((item) => item.name);
+  if (!categoryNames.length && product.category) categoryNames.push(product.category);
   const savedImages = await query(
     'SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 6',
     [productId]
@@ -37,14 +43,14 @@ export default async function ProductDetailPage({ params }) {
 
   return (
     <div className="wrap product-detail-page">
-      <p className="product-breadcrumb"><Link href="/">Início</Link> / {product.category || 'Produtos'} / {product.name}</p>
+      <p className="product-breadcrumb"><Link href="/">Início</Link> / {categoryNames[0] || 'Produtos'} / {product.name}</p>
       <div className="product-detail-grid">
         <ProductGallery images={images} name={product.name} />
         <section className="product-detail-info">
           {product.priority && <span className="tag product-featured-tag">Anúncio em destaque</span>}
           <h1>{product.name}</h1>
           {product.sku && <p className="muted">Código: {product.sku}</p>}
-          {product.category && <p className="muted">Categoria: {product.category}</p>}
+          {categoryNames.length > 0 && <p className="muted">Categorias: {categoryNames.join(', ')}</p>}
           <div className="product-detail-description">
             <h2>Descrição</h2>
             {product.description
@@ -61,6 +67,7 @@ export default async function ProductDetailPage({ params }) {
                 product={{
                   id: product.id,
                   name: product.name,
+                  sku: product.sku,
                   price: Number(product.price),
                   stock: Number(product.stock),
                   image_url: images[0] || '',

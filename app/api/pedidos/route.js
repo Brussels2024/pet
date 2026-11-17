@@ -48,7 +48,7 @@ export async function POST(request) {
 
   const ids = [...qtyById.keys()];
   const products = await query(
-    'SELECT id, name, price, stock, active, min_quantity, colors FROM products WHERE id = ANY($1::int[])',
+    'SELECT id, name, sku, price, stock, active, min_quantity, colors FROM products WHERE id = ANY($1::int[])',
     [ids]
   );
 
@@ -60,15 +60,17 @@ export async function POST(request) {
     const minimum = Math.max(1, Number(p.min_quantity) || 1);
     if (requested.qty < minimum) return fail(`A quantidade mínima de "${p.name}" é de ${minimum} unidades.`);
     const availableColors = Array.isArray(p.colors) ? p.colors : [];
-    if (availableColors.length && !availableColors.includes(requested.color)) {
-      return fail(`Escolha uma cor válida para "${p.name}".`);
-    }
+    const selectedColor = availableColors.find((item) => (typeof item === 'string' ? item : item?.name) === requested.color);
+    if (availableColors.length && !selectedColor) return fail(`Escolha uma cor válida para "${p.name}".`);
     if (!availableColors.length && requested.color) return fail(`A cor informada para "${p.name}" não é válida.`);
+    const colorName = typeof selectedColor === 'string' ? selectedColor : selectedColor?.name || '';
+    const colorAbbreviation = typeof selectedColor === 'object' ? selectedColor.abbreviation || '' : colorName.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
+    const variantSku = typeof selectedColor === 'object' && selectedColor.sku ? selectedColor.sku : (p.sku && colorAbbreviation ? p.sku + '-' + colorAbbreviation : p.sku || '');
     const price = Number(p.price); // sempre o preço do banco, nunca o do navegador
     total += price * requested.qty;
     lines.push({
       id: requested.id,
-      name: requested.color ? `${p.name} — Cor: ${requested.color}` : p.name,
+      name: requested.color ? `${p.name} — Cor: ${colorName} (${colorAbbreviation}) — SKU: ${variantSku}` : p.name,
       price,
       qty: requested.qty,
     });

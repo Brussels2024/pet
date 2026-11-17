@@ -17,9 +17,15 @@ export default async function ProdutosPage({ searchParams }) {
   }
 
   const products = await query(
-    `SELECT p.id, p.name, p.sku, p.price, p.stock, p.active, p.image_url, p.priority, c.name AS category
+    `SELECT p.id, p.name, p.sku, p.price, p.stock, p.active, p.image_url, p.priority,
+              COALESCE(category_list.names, c.name) AS category
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
+       LEFT JOIN LATERAL (
+         SELECT string_agg(cat.name, ', ' ORDER BY cat.position, cat.name) AS names
+           FROM product_categories pc JOIN categories cat ON cat.id = pc.category_id
+          WHERE pc.product_id = p.id
+       ) category_list ON true
        ${where}
        ORDER BY p.name
        LIMIT 300`,

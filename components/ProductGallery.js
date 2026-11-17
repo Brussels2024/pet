@@ -1,9 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function ProductGallery({ images = [], name = '' }) {
   const [active, setActive] = useState(0);
+  useEffect(() => {
+    setActive(0);
+    if (images.length < 2) return;
+    const timer = window.setInterval(() => setActive((current) => (current + 1) % images.length), 5000);
+    return () => window.clearInterval(timer);
+  }, [images.length]);
   if (!images.length) {
     return <div className="product-gallery-empty">Produto sem foto</div>;
   }

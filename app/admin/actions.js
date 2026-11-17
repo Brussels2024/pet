@@ -75,49 +75,63 @@ export async function saveProduct(formData) {
     const value = text(formData, key);
     if (!value) continue;
     if (value.length > 700000) return;
-    if (!/^data:image\/(webp|jpeg|png);base64,/.test(value) && !/^https?:\/\//i.test(value)) return;
+    if (!/^data:image\\/(webp|jpeg|png);base64,/.test(value) && !/^https?:\\/\\//i.test(value)) return;
     images.push(value);
   }
   const cover = images[0] || '';
+  const sku = text(formData, 'sku');
+  let colors = [];
+  try {
+    const raw = JSON.parse(text(formData, 'colors_json') || '[]');
+    colors = (Array.isArray(raw) ? raw : []).map((item) => {
+      const colorName = String(item?.name || '').trim().slice(0, 60);
+      const abbreviation = String(item?.abbreviation || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+      if (!colorName) return null;
+      const suffix = abbreviation || colorName.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
+      return { name: colorName, abbreviation: suffix, sku: sku ? sku + '-' + suffix : '' };
+    }).filter(Boolean).slice(0, 40);
+  } catch { return; }
+
+  const categoryIds = [...new Set(formData.getAll('category_ids').map(Number).filter((value) => Number.isInteger(value) && value > 0))];
   const values = [
-    name,
-    text(formData, 'description'),
-    text(formData, 'sku'),
+    name, text(formData, 'description'), sku,
     num(formData, 'price').toFixed(2),
     Math.max(0, Math.floor(num(formData, 'stock'))),
-    cover,
-    Number(formData.get('category_id')) || null,
+    cover, categoryIds[0] || null,
     formData.get('active') === 'on',
     formData.get('priority') === 'on',
+    JSON.stringify(colors),
   ];
 
   let productId = id;
   if (id) {
     await query(
       `UPDATE products
-         SET name = $1, description = $2, sku = $3, price = $4, stock = $5,
-             image_url = $6, category_id = $7, active = $8, priority = $9
-       WHERE id = $10`,
+          SET name = $1, description = $2, sku = $3, price = $4, stock = $5,
+              image_url = $6, category_id = $7, active = $8, priority = $9, colors = $10::jsonb
+        WHERE id = $11`,
       [...values, id]
     );
   } else {
     const inserted = await query(
-      `INSERT INTO products (name, description, sku, price, stock, image_url, category_id, active, priority)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      `INSERT INTO products (name, description, sku, price, stock, image_url, category_id, active, priority, colors)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb) RETURNING id`,
       values
     );
     productId = inserted[0]?.id;
   }
-
   if (!productId) throw new Error('Não foi possível salvar o produto.');
+
+  await query('DELETE FROM product_categories WHERE product_id = $1', [productId]);
+  for (const categoryId of categoryIds) {
+    await query('INSERT INTO product_categories (product_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [productId, categoryId]);
+  }
   await query('DELETE FROM product_images WHERE product_id = $1', [productId]);
   for (let i = 0; i < images.length; i++) {
-    await query(
-      'INSERT INTO product_images (product_id, image_url, position) VALUES ($1, $2, $3)',
-      [productId, images[i], i + 1]
-    );
+    await query('INSERT INTO product_images (product_id, image_url, position) VALUES ($1, $2, $3)', [productId, images[i], i + 1]);
   }
   revalidatePath('/admin/produtos');
+  revalidatePath('/admin/vitrines');
   revalidatePath('/');
   revalidatePath('/produto/' + productId);
   redirect('/admin/produtos');
@@ -303,6 +317,22 @@ export async function deleteFeaturedCollection(formData) {
   const id = Number(formData.get('id'));
   if (!Number.isInteger(id) || id < 1) return;
   await query('DELETE FROM featured_collections WHERE id = $1', [id]);
+  revalidatePath('/admin/vitrines');
+  revalidatePath('/');
+}
+
+
+/* ---------- Categorias em destaque na página inicial ---------- */
+export async function saveFeaturedCategories(formData) {
+  await requireAdmin();
+  const categoryIds = [...new Set(formData.getAll('category_ids').map(Number).filter((value) => Number.isInteger(value) && value > 0))];
+  await query('DELETE FROM featured_categories');
+  for (let i = 0; i < categoryIds.length; i++) {
+    await query(
+      'INSERT INTO featured_categories (category_id, position, active) SELECT id, $2, true FROM categories WHERE id = $1 AND active = true ON CONFLICT (category_id) DO UPDATE SET position = EXCLUDED.position, active = true',
+      [categoryIds[i], i + 1]
+    );
+  }
   revalidatePath('/admin/vitrines');
   revalidatePath('/');
 }
