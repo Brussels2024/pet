@@ -416,3 +416,14 @@ body:has(.admin-nav) .site-footer { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .store-drawer { transition: none; }
 }
+
+
+/* Seletor de produtos das vitrines configuráveis */
+.line-product-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 560px; overflow: auto; padding: 2px; }
+.line-product-option { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: #fff; cursor: pointer; }
+.line-product-option input { flex: 0 0 auto; width: auto; }
+.line-product-option img, .line-product-no-image { flex: 0 0 48px; width: 48px; height: 48px; border-radius: 6px; object-fit: cover; background: var(--gray-soft); }
+.line-product-no-image { display: grid; place-items: center; color: #888; font-size: 11px; }
+.line-product-option span { min-width: 0; overflow-wrap: anywhere; }
+.line-product-option small { display: block; color: #888; margin-top: 3px; }
+@media (max-width: 600px) { .line-product-picker { grid-template-columns: 1fr; } }
