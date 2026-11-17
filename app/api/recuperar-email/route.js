@@ -47,7 +47,15 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 });
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 });
+  }
+
   await ensureEmailRecoverySchema();
+  await query(
+    "UPDATE email_recovery_requests SET status = 'recusada', reviewed_at = now(), requested_password_hash = '' " +
+    "WHERE status = 'pendente' AND expires_at <= now()"
+  );
 
   if (body.action === 'validar') {
     const cnpj = onlyDigits(body.cnpj);
