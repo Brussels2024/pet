@@ -277,7 +277,7 @@ export async function approveEmailRecovery(formData) {
 
   const approved = await query(
     'WITH pending AS MATERIALIZED (' +
-    " SELECT id, user_id, requested_email, requested_password_hash FROM email_recovery_requests WHERE id = $1 AND status = 'pendente' FOR UPDATE" +
+    " SELECT id, user_id, requested_email, requested_password_hash FROM email_recovery_requests WHERE id = $1 AND status = 'pendente' AND expires_at > now() FOR UPDATE" +
     '), changed_user AS (' +
     ' UPDATE users u SET email = p.requested_email, password_hash = p.requested_password_hash, session_version = u.session_version + 1' +
     ' FROM pending p WHERE u.id = p.user_id' +
@@ -285,7 +285,7 @@ export async function approveEmailRecovery(formData) {
     ' RETURNING u.id' +
     '), approved AS (' +
     " UPDATE email_recovery_requests r SET status = 'aprovada', reviewed_at = now(), reviewed_by = $2, requested_password_hash = ''" +
-    ' FROM pending p, changed_user cu WHERE r.id = p.id AND r.expires_at > now() RETURNING r.id' +
+    ' FROM pending p, changed_user cu WHERE r.id = p.id RETURNING r.id' +
     '), invalidated AS (' +
     ' UPDATE password_resets pr SET used_at = now()' +
     ' WHERE pr.user_id = (SELECT id FROM changed_user) AND pr.used_at IS NULL RETURNING pr.id' +
