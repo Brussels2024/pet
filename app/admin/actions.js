@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { query } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
+import { ensureEmailRecoverySchema } from '@/lib/account-recovery';
 
 const text = (formData, key) => String(formData.get(key) ?? '').trim();
 const num = (formData, key) => Number(String(formData.get(key) ?? '').replace(',', '.')) || 0;
@@ -263,4 +264,53 @@ export async function deleteShippingCity(formData) {
   if (!Number.isInteger(id) || id < 1) return;
   await query('DELETE FROM shipping_cities WHERE id = $1', [id]);
   revalidatePath('/admin/configuracoes/frete');
+}
+
+
+/* ---------- Recuperação de acesso por análise administrativa ---------- */
+
+export async function approveEmailRecovery(formData) {
+  const admin = await requireAdmin();
+  await ensureEmailRecoverySchema();
+  const id = Number(formData.get('id'));
+  if (!Number.isInteger(id) || id < 1) return;
+
+  const approved = await query(
+    'WITH pending AS MATERIALIZED (' +
+    " SELECT id, user_id, requested_email, requested_password_hash FROM email_recovery_requests WHERE id = $1 AND status = 'pendente' FOR UPDATE" +
+    '), changed_user AS (' +
+    ' UPDATE users u SET email = p.requested_email, password_hash = p.requested_password_hash, session_version = u.session_version + 1' +
+    ' FROM pending p WHERE u.id = p.user_id' +
+    ' AND NOT EXISTS (SELECT 1 FROM users other WHERE lower(other.email) = lower(p.requested_email) AND other.id <> u.id)' +
+    ' RETURNING u.id' +
+    '), approved AS (' +
+    " UPDATE email_recovery_requests r SET status = 'aprovada', reviewed_at = now(), reviewed_by = $2" +
+    ' FROM pending p, changed_user cu WHERE r.id = p.id RETURNING r.id' +
+    '), invalidated AS (' +
+    ' UPDATE password_resets pr SET used_at = now()' +
+    ' WHERE pr.user_id = (SELECT id FROM changed_user) AND pr.used_at IS NULL RETURNING pr.id' +
+    ') SELECT id FROM approved',
+    [id, admin.id]
+  );
+
+  if (!approved.length) {
+    redirect('/admin/recuperacoes?erro=1');
+  }
+  revalidatePath('/admin/recuperacoes');
+  revalidatePath('/admin/clientes');
+  revalidatePath('/admin');
+  redirect('/admin/recuperacoes?sucesso=1');
+}
+
+export async function rejectEmailRecovery(formData) {
+  const admin = await requireAdmin();
+  await ensureEmailRecoverySchema();
+  const id = Number(formData.get('id'));
+  if (!Number.isInteger(id) || id < 1) return;
+
+  await query(
+    "UPDATE email_recovery_requests SET status = 'recusada', reviewed_at = now(), reviewed_by = $2 WHERE id = $1 AND status = 'pendente'",
+    [id, admin.id]
+  );
+  revalidatePath('/admin/recuperacoes');
 }
