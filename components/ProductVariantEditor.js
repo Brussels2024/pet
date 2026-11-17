@@ -25,6 +25,9 @@ const PALETTE = [
   { name: 'Prata', hex: '#c0c0c0' },
 ];
 function normalize(items) {
+  if (typeof items === 'string') {
+    try { items = JSON.parse(items); } catch { items = []; }
+  }
   return (Array.isArray(items) ? items : []).map((item) => {
     if (typeof item === 'string') return { name: item, abbreviation: abbreviation(item), manualAbbreviation: false };
     return { name: String(item?.name || ''), abbreviation: String(item?.abbreviation || abbreviation(item?.name)), manualAbbreviation: Boolean(item?.abbreviation) };
