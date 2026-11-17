@@ -21,6 +21,7 @@ export default async function ProdutoFormPage({ params }) {
     category_id: '',
     active: true,
     priority: false,
+    category_featured: false,
   };
   let imageValues = [];
 
@@ -101,6 +102,11 @@ export default async function ProdutoFormPage({ params }) {
         <div className="field">
           <label>
             <input type="checkbox" name="priority" defaultChecked={product.priority === true} /> Priorizar anúncio (destaque na loja)
+          </label>
+        </div>
+        <div className="field">
+          <label>
+            <input type="checkbox" name="category_featured" defaultChecked={product.category_featured === true} /> Destacar este produto na categoria dele
           </label>
         </div>
         <div className="field">
