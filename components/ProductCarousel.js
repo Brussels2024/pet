@@ -18,7 +18,8 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
   const [page, setPage] = useState(0);
   const [randomProducts, setRandomProducts] = useState(products);
   const ordered = randomize ? randomProducts : products;
-  const pages = Math.max(1, Math.ceil(ordered.length / 4));
+  const pageSize = 16;
+  const pages = Math.max(1, Math.ceil(ordered.length / pageSize));
 
   useEffect(() => {
     if (randomize) {
@@ -40,7 +41,7 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
   }, [pages]);
 
   if (!ordered.length) return null;
-  const visible = ordered.slice(page * 4, page * 4 + 4);
+  const visible = ordered.slice(page * pageSize, page * pageSize + pageSize);
   const move = (direction) => setPage((current) => (current + direction + pages) % pages);
 
   return (
@@ -50,13 +51,7 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
           <h2>{title}</h2>
           {subtitle && <p className="muted">{subtitle}</p>}
         </div>
-        {pages > 1 && (
-          <div className="showcase-controls">
-            <button type="button" onClick={() => move(-1)} aria-label="Quatro produtos anteriores">‹</button>
-            <span>{page + 1} / {pages}</span>
-            <button type="button" onClick={() => move(1)} aria-label="Próximos quatro produtos">›</button>
-          </div>
-        )}
+        
       </div>
       <div className="products showcase-products">
         {visible.map((p) => (
@@ -91,6 +86,13 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
           </article>
         ))}
       </div>
+      {pages > 1 && (
+        <div className="showcase-pagination" aria-label="Paginação dos produtos">
+          <button type="button" onClick={() => move(-1)} aria-label="Página anterior">‹</button>
+          <span>Página {page + 1} de {pages}</span>
+          <button type="button" onClick={() => move(1)} aria-label="Próxima página">›</button>
+        </div>
+      )}
     </section>
   );
 }
@@ -125,7 +127,6 @@ export default function ProductCarousel({
         products={regular}
         showPrice={showPrice}
         randomize
-        maxProducts={limitGeneral ? 20 : undefined}
       />
     </>
   );
