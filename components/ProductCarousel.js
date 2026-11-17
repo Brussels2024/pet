@@ -15,34 +15,15 @@ function shuffle(items) {
 }
 
 export function ProductRail({ title, subtitle, products, showPrice, randomize = false }) {
-  const [page, setPage] = useState(0);
   const [randomProducts, setRandomProducts] = useState(products);
   const ordered = randomize ? randomProducts : products;
-  const pageSize = 16;
-  const pages = Math.max(1, Math.ceil(ordered.length / pageSize));
 
   useEffect(() => {
-    if (randomize) {
-      const shuffled = shuffle(products);
-      setRandomProducts(shuffled);
-    }
+    if (randomize) setRandomProducts(shuffle(products));
+    else setRandomProducts(products);
   }, [products, randomize]);
 
-  useEffect(() => {
-    setPage(0);
-  }, [products.length]);
-
-  useEffect(() => {
-    if (pages < 2) return;
-    const timer = window.setInterval(() => {
-      setPage((current) => (current + 1) % pages);
-    }, 10000);
-    return () => window.clearInterval(timer);
-  }, [pages]);
-
   if (!ordered.length) return null;
-  const visible = ordered.slice(page * pageSize, page * pageSize + pageSize);
-  const move = (direction) => setPage((current) => (current + direction + pages) % pages);
 
   return (
     <section className="product-showcase" aria-label={title}>
@@ -51,10 +32,9 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
           <h2>{title}</h2>
           {subtitle && <p className="muted">{subtitle}</p>}
         </div>
-        
       </div>
       <div className="products showcase-products">
-        {visible.map((p) => (
+        {ordered.map((p) => (
           <article className="product" key={p.id}>
             <Link className="product-detail-link" href={'/produto/' + p.id} aria-label={'Ver detalhes de ' + p.name}>
               <div className="photo">
@@ -86,13 +66,6 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
           </article>
         ))}
       </div>
-      {pages > 1 && (
-        <div className="showcase-pagination" aria-label="Paginação dos produtos">
-          <button type="button" onClick={() => move(-1)} aria-label="Página anterior">‹</button>
-          <span>Página {page + 1} de {pages}</span>
-          <button type="button" onClick={() => move(1)} aria-label="Próxima página">›</button>
-        </div>
-      )}
     </section>
   );
 }
