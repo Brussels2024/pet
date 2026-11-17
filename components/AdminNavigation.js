@@ -11,6 +11,7 @@ export default function AdminNavigation() {
       <div className="admin-nav-links">
         <Link href="/admin" onClick={() => setOpen(false)}>Painel</Link>
         <Link href="/admin/clientes" onClick={() => setOpen(false)}>Clientes</Link>
+        <Link href="/admin/recuperacoes" onClick={() => setOpen(false)}>Recuperações de acesso</Link>
         <Link href="/admin/produtos" onClick={() => setOpen(false)}>Produtos e estoque</Link>
         <Link href="/admin/banners" onClick={() => setOpen(false)}>Banners</Link>
         <Link href="/admin/pedidos" onClick={() => setOpen(false)}>Pedidos</Link>
