@@ -96,6 +96,7 @@ export default async function Home({ searchParams }) {
     if (!collectionProductsById.has(product.collection_id)) collectionProductsById.set(product.collection_id, []);
     collectionProductsById.get(product.collection_id).push(item);
   }
+  const collectionProductIds = [...new Set(collectionProducts.map((product) => product.id))];
 
   return (
     <>
@@ -118,7 +119,13 @@ export default async function Home({ searchParams }) {
           {!q && !catId && collections.map((collection) => (
             <ProductRail key={collection.id} title={collection.title} products={collectionProductsById.get(collection.id) || []} showPrice={showPrice} />
           ))}
-          <ProductCarousel products={storefrontProducts} priorityProducts={priorityProducts} showPrice={showPrice} />
+          <ProductCarousel
+            products={storefrontProducts}
+            priorityProducts={priorityProducts}
+            excludedIds={!q && !catId ? collectionProductIds : []}
+            limitGeneral={!q && !catId}
+            showPrice={showPrice}
+          />
         </section>
       </div>
     </>
