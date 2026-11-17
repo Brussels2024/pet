@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 import { getUser, canSeePrices } from '@/lib/auth';
 import CategoryMenu from '@/components/CategoryMenu';
 import BannerCarousel from '@/components/BannerCarousel';
-import ProductCarousel from '@/components/ProductCarousel';
+import ProductCarousel, { ProductRail } from '@/components/ProductCarousel';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,9 +15,10 @@ export default async function Home({ searchParams }) {
   const user = await getUser();
   const showPrice = canSeePrices(user);
 
-  const [cats, banners] = await Promise.all([
+  const [cats, banners, collections] = await Promise.all([
     query('SELECT id, name, parent_id FROM categories WHERE active = true ORDER BY position, name, id'),
     query('SELECT id, position, title, image_url, active FROM banners WHERE active = true ORDER BY position'),
+    (!q && !catId) ? query('SELECT id, title FROM featured_collections WHERE active = true ORDER BY position, id') : Promise.resolve([]),
   ]);
   const tree = cats
     .filter((c) => !c.parent_id)
@@ -70,6 +71,31 @@ export default async function Home({ searchParams }) {
   const priorityProducts = storefrontProducts.filter((product) => product.priority);
 
   const activeName = catId ? cats.find((c) => c.id === catId)?.name : null;
+  const collectionProducts = collections.length ? await query(
+    `SELECT fcp.collection_id, p.id, p.name, p.sku, p.price, p.stock, p.image_url
+       FROM featured_collection_products fcp
+       JOIN products p ON p.id = fcp.product_id AND p.active = true
+      WHERE fcp.collection_id = ANY($1::int[])
+      ORDER BY fcp.collection_id, fcp.position, p.name`,
+    [collections.map((item) => item.id)]
+  ) : [];
+  const collectionImages = collectionProducts.length ? await query(
+    'SELECT product_id, image_url, position FROM product_images WHERE product_id = ANY($1::int[]) ORDER BY product_id, position',
+    [collectionProducts.map((item) => item.id)]
+  ) : [];
+  const collectionImagesByProduct = new Map();
+  for (const image of collectionImages) {
+    if (!collectionImagesByProduct.has(image.product_id)) collectionImagesByProduct.set(image.product_id, []);
+    collectionImagesByProduct.get(image.product_id).push(image.image_url);
+  }
+  const collectionProductsById = new Map();
+  for (const product of collectionProducts) {
+    const images = collectionImagesByProduct.get(product.id) || (product.image_url ? [product.image_url] : []);
+    const item = { ...product, images, image_url: images[0] || '' };
+    if (!showPrice) delete item.price;
+    if (!collectionProductsById.has(product.collection_id)) collectionProductsById.set(product.collection_id, []);
+    collectionProductsById.get(product.collection_id).push(item);
+  }
 
   return (
     <>
@@ -89,6 +115,9 @@ export default async function Home({ searchParams }) {
             </div>
           )}
 
+          {!q && !catId && collections.map((collection) => (
+            <ProductRail key={collection.id} title={collection.title} products={collectionProductsById.get(collection.id) || []} showPrice={showPrice} />
+          ))}
           <ProductCarousel products={storefrontProducts} priorityProducts={priorityProducts} showPrice={showPrice} />
         </section>
       </div>
