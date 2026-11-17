@@ -284,11 +284,14 @@ export async function approveEmailRecovery(formData) {
     ' AND NOT EXISTS (SELECT 1 FROM users other WHERE lower(other.email) = lower(p.requested_email) AND other.id <> u.id)' +
     ' RETURNING u.id' +
     '), approved AS (' +
-    " UPDATE email_recovery_requests r SET status = 'aprovada', reviewed_at = now(), reviewed_by = $2" +
-    ' FROM pending p, changed_user cu WHERE r.id = p.id RETURNING r.id' +
+    " UPDATE email_recovery_requests r SET status = 'aprovada', reviewed_at = now(), reviewed_by = $2, requested_password_hash = ''" +
+    ' FROM pending p, changed_user cu WHERE r.id = p.id AND r.expires_at > now() RETURNING r.id' +
     '), invalidated AS (' +
     ' UPDATE password_resets pr SET used_at = now()' +
     ' WHERE pr.user_id = (SELECT id FROM changed_user) AND pr.used_at IS NULL RETURNING pr.id' +
+    '), invalidated_challenges AS (' +
+    ' UPDATE email_recovery_challenges c SET used_at = now()' +
+    ' WHERE c.user_id = (SELECT id FROM changed_user) AND c.used_at IS NULL RETURNING c.id' +
     ') SELECT id FROM approved',
     [id, admin.id]
   );
@@ -309,7 +312,7 @@ export async function rejectEmailRecovery(formData) {
   if (!Number.isInteger(id) || id < 1) return;
 
   await query(
-    "UPDATE email_recovery_requests SET status = 'recusada', reviewed_at = now(), reviewed_by = $2 WHERE id = $1 AND status = 'pendente'",
+    "UPDATE email_recovery_requests SET status = 'recusada', reviewed_at = now(), reviewed_by = $2, requested_password_hash = '' WHERE id = $1 AND status = 'pendente'",
     [id, admin.id]
   );
   revalidatePath('/admin/recuperacoes');
