@@ -25,6 +25,13 @@ export default async function ProductDetailPage({ params }) {
   if (!rows.length) notFound();
 
   const product = rows[0];
+  let productColors = product.colors;
+  if (typeof productColors === 'string') {
+    try { productColors = JSON.parse(productColors); } catch { productColors = []; }
+  }
+  productColors = (Array.isArray(productColors) ? productColors : []).map((item) =>
+    typeof item === 'string' ? { name: item } : item
+  ).filter((item) => String(item?.name || '').trim());
   const categoryRows = await query(
     'SELECT c.name FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = $1 ORDER BY c.position, c.name',
     [productId]
@@ -71,18 +78,44 @@ export default async function ProductDetailPage({ params }) {
                   stock: Number(product.stock),
                   image_url: images[0] || '',
                   min_quantity: Number(product.min_quantity) || 1,
-                  colors: Array.isArray(product.colors) ? product.colors : [],
+                  colors: productColors,
                 }}
               />
             </div>
           ) : (
-            <div className="msg warn product-price-notice">
-              Os preços são exclusivos para empresas com cadastro aprovado.
-              <div className="product-auth-links">
-                <Link className="btn" href="/cadastro">Cadastrar empresa</Link>
-                <Link className="btn outline" href="/entrar">Entrar</Link>
+            <>
+              <div className="msg warn product-price-notice">
+                Os preços são exclusivos para empresas com cadastro aprovado.
+                <div className="product-auth-links">
+                  <Link className="btn" href="/cadastro">Cadastrar empresa</Link>
+                  <Link className="btn outline" href="/entrar">Entrar</Link>
+                </div>
               </div>
-            </div>
+              {productColors.length > 0 && (
+                <div className="field color-variant-picker" style={{ width: '100%', marginTop: 18 }}>
+                  <span className="color-variant-title">Cores disponíveis</span>
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {productColors.map((color, index) => (
+                      <div key={String(color.sku || color.name) + '-' + index} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span aria-hidden="true" style={{
+                          display: 'inline-block', width: 24, height: 24, minWidth: 24, borderRadius: '50%',
+                          border: '1px solid #bdbdbd',
+                          background: /^#[0-9a-f]{3,8}$/i.test(String(color.hex || color.color || ''))
+                            ? (color.hex || color.color)
+                            : ({
+                                branco:'#ffffff', preta:'#171717', preto:'#171717', amarelo:'#f4d21f',
+                                verde:'#269653', azul:'#2375d8', vermelho:'#e53935', roxo:'#7e3fb2',
+                                rosa:'#ed78a8', laranja:'#f28c28', cinza:'#929292', marrom:'#80543b',
+                                bege:'#d9c3a0', lilas:'#b78ad5', dourado:'#c9a227', prata:'#c0c0c0'
+                              }[String(color.name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()] || '#a0a0a0')
+                        }} />
+                        <span>{color.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
           <Link className="btn outline product-back-link" href="/">Voltar para a loja</Link>
         </section>
