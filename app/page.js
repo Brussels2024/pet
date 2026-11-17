@@ -33,6 +33,7 @@ export default async function Home({ searchParams }) {
   const where = ['p.active = true'];
   const params = [];
   if (catId) {
+    where.push('p.category_featured = true');
     params.push(catId);
     const n = params.length;
     where.push(
