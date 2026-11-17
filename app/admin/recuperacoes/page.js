@@ -10,12 +10,16 @@ export const dynamic = 'force-dynamic';
 export default async function RecuperacoesPage({ searchParams }) {
   await ensureEmailRecoverySchema();
   const params = await searchParams;
+  await query(
+    "UPDATE email_recovery_requests SET status = 'recusada', reviewed_at = now(), requested_password_hash = '' " +
+    "WHERE status = 'pendente' AND expires_at <= now()"
+  );
   const requests = await query(
     "SELECT r.id, r.requested_email, r.created_at, " +
     "u.email AS current_email, u.razao_social, u.nome_fantasia, u.cnpj, u.telefone " +
     "FROM email_recovery_requests r " +
     "JOIN users u ON u.id = r.user_id " +
-    "WHERE r.status = 'pendente' ORDER BY r.created_at ASC"
+    "WHERE r.status = 'pendente' AND r.expires_at > now() ORDER BY r.created_at ASC"
   );
 
   return (
