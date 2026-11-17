@@ -51,10 +51,12 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
       <div className="products showcase-products">
         {visibleProducts.map((p) => (
           <article className="product" key={p.id}>
-            <Link className="product-detail-link" href={'/produto/' + p.id} aria-label={'Ver detalhes de ' + p.name}>
+            <Link className="product-photo-link" href={`/produto/${encodeURIComponent(String(p.id))}`} aria-label={'Ver detalhes de ' + p.name}>
               <div className="photo">
                 {p.image_url ? <img src={p.image_url} alt={p.name} loading="lazy" /> : 'Sem foto'}
               </div>
+            </Link>
+            <Link className="product-detail-link" href={`/produto/${encodeURIComponent(String(p.id))}`}>
               <div className="info">
                 <div className="name">{p.name}</div>
                 {p.sku && <div className="sku">Cód. {p.sku}</div>}
