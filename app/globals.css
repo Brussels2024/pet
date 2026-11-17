@@ -443,3 +443,19 @@ body:has(.admin-nav) .site-footer { display: none; }
   .showcase-products-list .price { font-size: 15px; }
   .showcase-products-list .add-row { flex-wrap: wrap; }
 }
+
+
+/* Seletor visual de cores nos anúncios */
+.color-variant-picker { display: flex; flex-direction: column; gap: 9px; }
+.color-variant-title { font-weight: 700; color: var(--gray); }
+.color-variant-swatches { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.color-variant-swatch {
+  appearance: none; width: 30px; height: 30px; min-width: 30px; padding: 0;
+  border: 2px solid #d5d5d5; border-radius: 50%; background: var(--swatch-color);
+  cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05);
+}
+.color-variant-swatch[style*="#ffffff"] { border-color: #bdbdbd; }
+.color-variant-swatch.selected { outline: 3px solid var(--yellow); outline-offset: 3px; border-color: #555; }
+.color-variant-swatch:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+.color-variant-summary { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.color-variant-summary span { color: #777; }
