@@ -64,10 +64,10 @@ export async function POST(request) {
   const ids=[...qtyById.keys()];
   const products=await query('SELECT id,name,sku,price,stock,active,min_quantity,colors FROM products WHERE id=ANY($1::int[])',[ids]);
   if(products.length!==ids.length||products.some((product)=>!product.active))return fail('Um dos produtos do carrinho não está mais disponível.');
+  for(const [id,qty] of qtyById){const product=products.find((row)=>Number(row.id)===id),minimum=Math.max(1,Number(product.min_quantity)||1);if(qty<minimum)return fail('A quantidade mínima de "'+product.name+'" é de '+minimum+' unidades no total, somando todas as cores.');}
   let total=0;const orderLines=[];
   for(const requested of requestedLines){
     const product=products.find((row)=>Number(row.id)===requested.id),minimum=Math.max(1,Number(product.min_quantity)||1);
-    if(requested.qty<minimum)return fail('A quantidade mínima de "'+product.name+'" na cor '+(requested.color||'selecionada')+' é de '+minimum+' unidades.');
     const availableColors=Array.isArray(product.colors)?product.colors:[];
     const selectedColor=availableColors.find((item)=>(typeof item==='string'?item:item?.name)===requested.color);
     if(availableColors.length&&!selectedColor)return fail('Escolha uma cor válida para "'+product.name+'".');

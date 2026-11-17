@@ -35,8 +35,8 @@ export default function AddToCart({ product }) {
       ? variants.map((variant) => ({ color: variant.name, variant, qty: Math.floor(Number(quantities[variant.name]) || 0) })).filter((item) => item.qty > 0)
       : [{ color: '', variant: null, qty: Math.floor(Number(singleQty) || 0) }];
     if (!additions.length) { setError('Informe a quantidade de pelo menos uma cor.'); return; }
-    if (additions.some((item) => item.qty < minimum)) { setError('Cada cor selecionada precisa respeitar a quantidade mínima de ' + minimum + ' unidades.'); return; }
     const newTotal = additions.reduce((sum, item) => sum + item.qty, 0);
+    if (newTotal < minimum) { setError('A quantidade mínima deste produto é de ' + minimum + ' unidades no total, somando todas as cores.'); return; }
     try {
       const cart = JSON.parse(localStorage.getItem('bp_cart') || '[]');
       const alreadyInCart = cart.filter((item) => Number(item.id) === Number(product.id)).reduce((sum, item) => sum + Number(item.qty || 0), 0);
@@ -77,7 +77,7 @@ export default function AddToCart({ product }) {
               </label>
             ))}
           </div>
-          <small className="muted">Mínimo de {minimum} unidades por cor selecionada. Estoque total: {product.stock}.</small>
+          <small className="muted">Mínimo de {minimum} unidades no total, somando todas as cores selecionadas.</small>
         </div>
       ) : (
         <label className="field" style={{ minWidth:110 }}>

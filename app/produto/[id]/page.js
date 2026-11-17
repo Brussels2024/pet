@@ -61,8 +61,7 @@ export default async function ProductDetailPage({ params }) {
             <div className="product-detail-buy">
               <div className="price">{brl(product.price)} <span className="muted">/ unidade</span></div>
               {product.package_price !== null && product.package_price !== undefined && <p className="muted">Preço do pacote: {brl(product.package_price)}</p>}
-              <p className="muted">Quantidade mínima: {Math.max(1, Number(product.min_quantity) || 1)} unidades</p>
-              <p className="muted">{Number(product.stock) > 0 ? 'Disponível em estoque' : 'Sem estoque no momento'}</p>
+              <p className="muted">Quantidade mínima: {Math.max(1, Number(product.min_quantity) || 1)} unidades no total, somando todas as cores</p>
               <AddToCart
                 product={{
                   id: product.id,

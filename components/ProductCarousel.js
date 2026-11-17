@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { brl } from '@/lib/format';
-import AddToCart from '@/components/AddToCart';
 
 function shuffle(items) {
   const copy = [...items];
@@ -70,7 +69,7 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
             <div className="info product-purchase-info">
               {showPrice ? <>
                 <div className="price">{brl(p.price)}</div>
-                <AddToCart product={{ id: p.id, name: p.name, sku: p.sku, price: Number(p.price), stock: Number(p.stock), image_url: p.image_url, colors: p.colors || [] }} />
+                <Link className="btn small" href={'/produto/' + p.id}>Ver produto</Link>
               </> : <div className="price-locked">Preço visível após cadastro empresarial aprovado</div>}
             </div>
           </article>
