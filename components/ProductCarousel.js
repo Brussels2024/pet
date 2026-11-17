@@ -14,7 +14,7 @@ function shuffle(items) {
   return copy;
 }
 
-export function ProductRail({ title, subtitle, products, showPrice, randomize = false, maxProducts }) {
+export function ProductRail({ title, subtitle, products, showPrice, randomize = false }) {
   const [page, setPage] = useState(0);
   const [randomProducts, setRandomProducts] = useState(products);
   const ordered = randomize ? randomProducts : products;
@@ -24,9 +24,9 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
   useEffect(() => {
     if (randomize) {
       const shuffled = shuffle(products);
-      setRandomProducts(Number.isInteger(maxProducts) ? shuffled.slice(0, maxProducts) : shuffled);
+      setRandomProducts(shuffled);
     }
-  }, [products, randomize, maxProducts]);
+  }, [products, randomize]);
 
   useEffect(() => {
     setPage(0);
@@ -101,7 +101,6 @@ export default function ProductCarousel({
   products = [],
   priorityProducts = [],
   excludedIds = [],
-  limitGeneral = false,
   showPrice,
 }) {
   const featured = useMemo(() => priorityProducts.slice(0, 8), [priorityProducts]);
