@@ -14,7 +14,7 @@ function shuffle(items) {
   return copy;
 }
 
-function ProductRail({ title, subtitle, products, showPrice, randomize = false }) {
+export function ProductRail({ title, subtitle, products, showPrice, randomize = false }) {
   const [page, setPage] = useState(0);
   const [randomProducts, setRandomProducts] = useState(products);
   const ordered = randomize ? randomProducts : products;
