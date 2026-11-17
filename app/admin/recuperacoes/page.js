@@ -26,8 +26,9 @@ export default async function RecuperacoesPage({ searchParams }) {
     <>
       <p className="muted"><Link href="/admin">← Painel</Link></p>
       <h1>Recuperações de acesso</h1>
-      <p className="muted">Revise os dados da empresa antes de aprovar a alteração. A aprovação atualiza o e-mail e a senha da conta; a senha é armazenada apenas como hash.</p>
+      <p className="muted">Revise os dados da empresa antes de aprovar. Confirme a solicitação com o contato que já estava cadastrado, e não apenas pelo novo e-mail informado. A aprovação atualiza o e-mail e a senha da conta.</p>
 
+      {params?.validacao && <div className="msg error" role="alert">Antes de aprovar, confirme que validou a solicitação usando o contato que já estava cadastrado.</div>}
       {params?.erro && (
         <div className="msg error" role="alert">
           Não foi possível aprovar. A solicitação pode não existir mais ou o novo e-mail já pode estar vinculado a outra conta.
@@ -52,6 +53,7 @@ export default async function RecuperacoesPage({ searchParams }) {
               <div className="row-actions">
                 <form action={approveEmailRecovery}>
                   <input type="hidden" name="id" value={item.id} />
+                  <label style={{ display: 'block', marginBottom: 8 }}><input type="checkbox" name="confirmacao" required /> Confirmei a solicitação com o contato já cadastrado.</label>
                   <button className="btn" type="submit">Aprovar e atualizar conta</button>
                 </form>
                 <form action={rejectEmailRecovery}>
