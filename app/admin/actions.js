@@ -89,6 +89,7 @@ export async function saveProduct(formData) {
     Number(formData.get('category_id')) || null,
     formData.get('active') === 'on',
     formData.get('priority') === 'on',
+    formData.get('category_featured') === 'on',
   ];
 
   let productId = id;
@@ -96,14 +97,14 @@ export async function saveProduct(formData) {
     await query(
       `UPDATE products
          SET name = $1, description = $2, sku = $3, price = $4, stock = $5,
-             image_url = $6, category_id = $7, active = $8, priority = $9
-       WHERE id = $10`,
+             image_url = $6, category_id = $7, active = $8, priority = $9, category_featured = $10
+       WHERE id = $11`,
       [...values, id]
     );
   } else {
     const inserted = await query(
-      `INSERT INTO products (name, description, sku, price, stock, image_url, category_id, active, priority)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      `INSERT INTO products (name, description, sku, price, stock, image_url, category_id, active, priority, category_featured)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
       values
     );
     productId = inserted[0]?.id;
