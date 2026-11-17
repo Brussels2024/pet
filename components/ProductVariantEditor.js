@@ -28,9 +28,13 @@ function normalize(items) {
   if (typeof items === 'string') {
     try { items = JSON.parse(items); } catch { items = []; }
   }
+  if (!Array.isArray(items) && items && typeof items === 'object') {
+    items = items.colors || items.cores || items.variations || items.variacoes || items.items || [];
+  }
   return (Array.isArray(items) ? items : []).map((item) => {
-    if (typeof item === 'string') return { name: item, abbreviation: abbreviation(item), manualAbbreviation: false };
-    return { name: String(item?.name || ''), abbreviation: String(item?.abbreviation || abbreviation(item?.name)), manualAbbreviation: Boolean(item?.abbreviation) };
+    const name = typeof item === 'string' ? item : String(item?.name ?? item?.color ?? item?.cor ?? item?.value ?? item?.label ?? '');
+    const code = typeof item === 'object' && item ? String(item.abbreviation || item.sigla || '') : '';
+    return { name: name.trim(), abbreviation: code || abbreviation(name), manualAbbreviation: Boolean(code) };
   }).filter((item) => item.name);
 }
 export default function ProductVariantEditor({ initialColors = [], baseSku = '' }) {

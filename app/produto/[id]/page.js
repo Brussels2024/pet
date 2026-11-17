@@ -29,9 +29,18 @@ export default async function ProductDetailPage({ params }) {
   if (typeof productColors === 'string') {
     try { productColors = JSON.parse(productColors); } catch { productColors = []; }
   }
-  productColors = (Array.isArray(productColors) ? productColors : []).map((item) =>
-    typeof item === 'string' ? { name: item } : item
-  ).filter((item) => String(item?.name || '').trim());
+  if (!Array.isArray(productColors) && productColors && typeof productColors === 'object') {
+    productColors = productColors.colors || productColors.cores || productColors.variations || productColors.variacoes || productColors.items || [];
+  }
+  productColors = (Array.isArray(productColors) ? productColors : []).map((item) => {
+    if (typeof item === 'string') return { name: item.trim() };
+    return {
+      ...item,
+      name: String(item?.name ?? item?.color ?? item?.cor ?? item?.value ?? item?.label ?? '').trim(),
+      abbreviation: String(item?.abbreviation ?? item?.sigla ?? ''),
+      sku: String(item?.sku || ''),
+    };
+  }).filter((item) => item.name);
   const categoryRows = await query(
     'SELECT c.name FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = $1 ORDER BY c.position, c.name',
     [productId]
