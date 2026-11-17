@@ -4,35 +4,85 @@ import { useState } from 'react';
 import * as XLSX from 'xlsx';
 
 function normalize(value) {
-  return String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('pt-BR');
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('pt-BR');
+}
+
+function isSkuHeader(value) {
+  const header = normalize(value).replace(/[^a-z0-9]/g, '');
+  return ['sku', 'skuproduto', 'codigosku', 'codigodosku', 'referencias ku', 'referenciasku'].includes(header);
+}
+
+function isColorHeader(value) {
+  const header = normalize(value);
+  return /^(cores?|colors?|cor\s*\d+|cores?\s*\d+|color\s*\d+|colors?\s*\d+|variacoes?\s*(de\s*)?cores?|tonalidades?)$/.test(header);
+}
+
+function splitColors(value) {
+  if (Array.isArray(value)) return value.flatMap(splitColors);
+  const raw = String(value ?? '').trim();
+  if (!raw) return [];
+  return raw
+    .split(/[,;\n|]+|\s+e\s+/i)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function readRows(workbook) {
   const sheet = workbook.Sheets['Planilha1'] || workbook.Sheets[workbook.SheetNames[0]];
-  if (!sheet) throw new Error('Não encontrei a primeira aba da planilha.');
+  if (!sheet) throw new Error('Não encontrei uma aba válida na planilha.');
+
   const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-  const headerIndex = matrix.findIndex((row) => {
-    const headers = (row || []).map(normalize);
-    return headers.includes('produto') && headers.includes('sku') && headers.includes('cores');
-  });
-  if (headerIndex < 0) throw new Error('A primeira aba precisa conter as colunas Produto, SKU e CORES.');
-  const headers = matrix[headerIndex].map(normalize);
-  const rows = [];
-  const seen = new Set();
+  let headerIndex = -1;
+  let skuColumn = -1;
+  let colorColumns = [];
+
+  // Procura a linha de cabeçalho sem exigir uma estrutura fixa ou a coluna Produto.
+  for (let i = 0; i < Math.min(matrix.length, 40); i++) {
+    const headers = (matrix[i] || []).map(normalize);
+    const foundSku = headers.findIndex(isSkuHeader);
+    const foundColors = headers
+      .map((header, index) => isColorHeader(header) ? index : -1)
+      .filter((index) => index >= 0);
+    if (foundSku >= 0 && foundColors.length) {
+      headerIndex = i;
+      skuColumn = foundSku;
+      colorColumns = foundColors;
+      break;
+    }
+  }
+
+  if (headerIndex < 0) {
+    throw new Error('Não encontrei na planilha uma coluna de SKU e pelo menos uma coluna identificando as cores. As demais colunas podem ter qualquer conteúdo.');
+  }
+
+  const grouped = new Map();
   for (let i = headerIndex + 1; i < matrix.length; i++) {
     const row = matrix[i] || [];
-    const name = String(row[headers.indexOf('produto')] ?? '').trim();
-    const sku = String(row[headers.indexOf('sku')] ?? '').trim();
-    const rawColors = String(row[headers.indexOf('cores')] ?? '').trim();
-    if (!name && !sku && !rawColors) continue;
-    if (!sku || !rawColors) throw new Error('Linha ' + (i + 1) + ': SKU ou cores vazias.');
-    const colors = rawColors.split(/\\s*,\\s*|\\s+E\\s+/i).map((v) => v.trim()).filter(Boolean);
+    const sku = String(row[skuColumn] ?? '').trim();
+    const colors = [...new Set(colorColumns.flatMap((column) => splitColors(row[column])))];
+    if (!sku && !colors.length) continue;
+    if (!sku) continue;
+    if (!colors.length) continue;
+
     const key = sku.toLocaleLowerCase('pt-BR');
-    if (seen.has(key)) throw new Error('A SKU ' + sku + ' aparece mais de uma vez na planilha.');
-    seen.add(key);
-    rows.push({ name, sku, colors });
+    if (!grouped.has(key)) grouped.set(key, { sku, colors: [] });
+    const item = grouped.get(key);
+    const known = new Set(item.colors.map(normalize));
+    for (const color of colors) {
+      if (!known.has(normalize(color))) {
+        item.colors.push(color);
+        known.add(normalize(color));
+      }
+    }
   }
-  if (!rows.length) throw new Error('Não encontrei produtos com cores na planilha.');
+
+  const rows = [...grouped.values()].filter((item) => item.colors.length);
+  if (!rows.length) throw new Error('Não encontrei linhas com SKU e cores preenchidas na planilha.');
   return rows;
 }
 
@@ -44,7 +94,9 @@ export default function ImportarVariacoesCores() {
   async function importFile(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    setBusy(true); setMessage('Lendo SKUs e cores...'); setSummary(null);
+    setBusy(true);
+    setMessage('Lendo SKUs e cores...');
+    setSummary(null);
     try {
       const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
       const rows = readRows(workbook);
@@ -69,7 +121,7 @@ export default function ImportarVariacoesCores() {
   return (
     <section className="card" style={{ maxWidth: 760, marginTop: 16 }}>
       <h2>Adicionar variações de cores por SKU</h2>
-      <p className="muted">Envie a planilha com as colunas Produto, SKU e CORES. O sistema procura cada SKU principal já cadastrada e acrescenta somente as cores que ainda não existem, usando a mesma sigla automática do cadastro manual. Não altera nome, SKU principal, preço, estoque, fotos ou outras informações do produto.</p>
+      <p className="muted">Envie sua planilha original, mesmo que ela tenha várias colunas e outras informações. O sistema identifica a coluna SKU e uma ou mais colunas de cores, procura os produtos pela SKU principal e acrescenta somente as cores que ainda não existem, usando a mesma sigla automática do cadastro manual. Não altera nome, SKU principal, preço, estoque, fotos ou outras informações do produto.</p>
       <div className="field">
         <label htmlFor="color-variation-file">Planilha Excel de variações</label>
         <input id="color-variation-file" type="file" accept=".xlsx,.xls" onChange={importFile} disabled={busy} />
