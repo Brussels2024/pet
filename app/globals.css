@@ -296,11 +296,12 @@ body:has(.admin-nav) .site-header,
 body:has(.admin-nav) .site-footer { display: none; }
 
 /* Galeria de fotos e página de detalhes do produto */
-.product-detail-link { display: flex; flex-direction: column; width: 100%; color: inherit; cursor: pointer; }
-.product-detail-link > * { pointer-events: none; }
+.product-clickable { position: relative; }
+.product-detail-link { position: absolute; inset: 0; z-index: 1; display: block; color: inherit; cursor: pointer; }
 .product-detail-link:hover { text-decoration: none; }
-.product-detail-link .info { padding-bottom: 4px; }
-.product-purchase-info { padding-top: 4px !important; }
+.product-detail-link:focus-visible { outline: 3px solid var(--yellow-dark); outline-offset: -3px; }
+.product-purchase-info { position: relative; z-index: 2; padding-top: 4px !important; pointer-events: none; }
+.product-purchase-info label, .product-purchase-info button, .product-purchase-info input, .product-purchase-info select { pointer-events: auto; }
 .product-image-pickers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .product-image-pickers .image-picker { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
 .product-image-pickers .image-picker-preview { min-height: 130px; }
