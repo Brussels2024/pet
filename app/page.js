@@ -123,7 +123,6 @@ export default async function Home({ searchParams }) {
             products={storefrontProducts}
             priorityProducts={priorityProducts}
             excludedIds={!q && !catId ? collectionProductIds : []}
-            limitGeneral={!q && !catId}
             showPrice={showPrice}
           />
         </section>
