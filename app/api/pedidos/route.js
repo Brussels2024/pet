@@ -64,7 +64,7 @@ export async function POST(request) {
     if (availableColors.length && !selectedColor) return fail(`Escolha uma cor válida para "${p.name}".`);
     if (!availableColors.length && requested.color) return fail(`A cor informada para "${p.name}" não é válida.`);
     const colorName = typeof selectedColor === 'string' ? selectedColor : selectedColor?.name || '';
-    const colorAbbreviation = typeof selectedColor === 'object' ? selectedColor.abbreviation || '' : colorName.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
+    const colorAbbreviation = typeof selectedColor === 'object' ? selectedColor.abbreviation || '' : colorName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
     const variantSku = typeof selectedColor === 'object' && selectedColor.sku ? selectedColor.sku : (p.sku && colorAbbreviation ? p.sku + '-' + colorAbbreviation : p.sku || '');
     const price = Number(p.price); // sempre o preço do banco, nunca o do navegador
     total += price * requested.qty;

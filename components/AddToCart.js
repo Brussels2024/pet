@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 function variantsOf(value) {
   return (Array.isArray(value) ? value : []).map((item) => {
-    if (typeof item === 'string') return { name: item, abbreviation: item.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2) };
+    if (typeof item === 'string') return { name: item, abbreviation: item.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2) };
     return { name: String(item?.name || ''), abbreviation: String(item?.abbreviation || ''), sku: String(item?.sku || '') };
   }).filter((item) => item.name);
 }

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 
 function abbreviation(name) {
-  const parts = String(name || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().match(/[A-Z0-9]+/g) || [];
+  const parts = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().match(/[A-Z0-9]+/g) || [];
   if (!parts.length) return '';
   return (parts.length > 1 ? parts.map((part) => part[0]).join('') : parts[0].slice(0, 2)).slice(0, 4);
 }

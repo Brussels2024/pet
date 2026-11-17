@@ -75,7 +75,9 @@ export async function saveProduct(formData) {
     const value = text(formData, key);
     if (!value) continue;
     if (value.length > 700000) return;
-    if (!/^data:image\\/(webp|jpeg|png);base64,/.test(value) && !/^https?:\\/\\//i.test(value)) return;
+    const validImageData = ['data:image/webp;base64,', 'data:image/jpeg;base64,', 'data:image/png;base64,'].some((prefix) => value.startsWith(prefix));
+    const validImageUrl = value.startsWith('https://') || value.startsWith('http://');
+    if (!validImageData && !validImageUrl) return;
     images.push(value);
   }
   const cover = images[0] || '';
@@ -87,7 +89,7 @@ export async function saveProduct(formData) {
       const colorName = String(item?.name || '').trim().slice(0, 60);
       const abbreviation = String(item?.abbreviation || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
       if (!colorName) return null;
-      const suffix = abbreviation || colorName.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
+      const suffix = abbreviation || colorName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
       return { name: colorName, abbreviation: suffix, sku: sku ? sku + '-' + suffix : '' };
     }).filter(Boolean).slice(0, 40);
   } catch { return; }
