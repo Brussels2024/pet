@@ -8,10 +8,10 @@ const brl = (n) => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency',
 export default function CartClient({ minOrder, status }) {
   const [cart, setCart] = useState([]);
   const [ready, setReady] = useState(false);
-  const [payment, setPayment] = useState('pix');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [checkoutKey, setCheckoutKey] = useState('');
 
   useEffect(() => {
     try {
@@ -24,6 +24,7 @@ export default function CartClient({ minOrder, status }) {
 
   function save(next) {
     setCart(next);
+    setCheckoutKey('');
     try {
       localStorage.setItem('bp_cart', JSON.stringify(next));
       window.dispatchEvent(new Event('cart-changed'));
@@ -44,14 +45,16 @@ export default function CartClient({ minOrder, status }) {
   async function finish() {
     setError('');
     setBusy(true);
+    const requestKey = checkoutKey || crypto.randomUUID();
+    if (!checkoutKey) setCheckoutKey(requestKey);
     try {
       const res = await fetch('/api/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: cart.map((i) => ({ id: i.id, qty: i.qty })),
-          payment,
           notes,
+          checkoutKey: requestKey,
         }),
       });
       const data = await res.json();
@@ -60,9 +63,14 @@ export default function CartClient({ minOrder, status }) {
         setBusy(false);
         return;
       }
+      if (!data.invoiceUrl) {
+        setError('O pedido foi criado, mas o link de pagamento não foi recebido. Entre em contato com a Brussels Pet antes de tentar novamente.');
+        setBusy(false);
+        return;
+      }
       localStorage.removeItem('bp_cart');
       window.dispatchEvent(new Event('cart-changed'));
-      window.location.href = `/conta?pedido=${data.orderId}`;
+      window.location.href = data.invoiceUrl;
     } catch {
       setError('Erro de conexão. Tente novamente.');
       setBusy(false);
@@ -125,12 +133,8 @@ export default function CartClient({ minOrder, status }) {
         )}
 
         <div className="field">
-          <label htmlFor="pay">Forma de pagamento</label>
-          <select id="pay" value={payment} onChange={(e) => setPayment(e.target.value)}>
-            <option value="pix">Pix</option>
-            <option value="boleto">Boleto</option>
-            <option value="cartao">Cartão</option>
-          </select>
+          <label>Pagamento</label>
+          <p className="muted">Pagamento seguro pelo Asaas. Na próxima etapa, você poderá escolher uma das modalidades habilitadas na conta: Pix, boleto ou cartão de crédito.</p>
         </div>
         <div className="field">
           <label htmlFor="notes">Observações</label>
@@ -155,7 +159,7 @@ export default function CartClient({ minOrder, status }) {
           disabled={busy || belowMin || status !== 'ok'}
           style={{ width: '100%' }}
         >
-          {busy ? 'Enviando...' : 'Finalizar pedido'}
+          {busy ? 'Gerando pagamento...' : 'Continuar para pagamento'}
         </button>
       </div>
     </>
