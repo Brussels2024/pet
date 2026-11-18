@@ -143,6 +143,21 @@ export async function saveProduct(formData) {
   redirect('/admin/produtos');
 }
 
+export async function setAllStocks(formData) {
+  await requireAdmin();
+  const entries = [...formData.entries()]
+    .filter(([key]) => /^stock_\\d+$/.test(key));
+  for (const [key, value] of entries) {
+    const id = Number(key.slice(6));
+    const stock = Math.max(0, Math.floor(Number(String(value).replace(',', '.')) || 0));
+    if (Number.isInteger(id) && id > 0) {
+      await query('UPDATE products SET stock = $1 WHERE id = $2', [stock, id]);
+    }
+  }
+  revalidatePath('/admin/produtos');
+  revalidatePath('/');
+}
+
 export async function setStock(formData) {
   await requireAdmin();
   const id = Number(formData.get('id'));
