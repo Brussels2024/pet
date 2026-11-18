@@ -435,3 +435,14 @@ body:has(.admin-nav) .site-footer { display: none; }
 .line-product-option span { min-width: 0; overflow-wrap: anywhere; }
 .line-product-option small { display: block; color: #888; margin-top: 3px; }
 @media (max-width: 600px) { .line-product-picker { grid-template-columns: 1fr; } }
+
+
+/* Seletor de vitrines criadas manualmente e produtos por vitrine */
+.featured-vitrine-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.featured-vitrine-option { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--gray); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.featured-vitrine-option.selected { border: 2px solid var(--yellow-dark); background: var(--yellow-soft); }
+.featured-vitrine-check { display: grid; place-items: center; flex: 0 0 22px; width: 22px; height: 22px; border: 2px solid #bbb; border-radius: 5px; background: #fff; font-size: 15px; color: var(--yellow-dark); }
+.featured-vitrine-option.selected .featured-vitrine-check { border-color: var(--yellow-dark); }
+.featured-vitrine-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.featured-vitrine-active { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+.featured-vitrine-active input { width: auto; }
