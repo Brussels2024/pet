@@ -146,7 +146,7 @@ export async function saveProduct(formData) {
 export async function setAllStocks(formData) {
   await requireAdmin();
   const entries = [...formData.entries()]
-    .filter(([key]) => /^stock_\\d+$/.test(key));
+    .filter(([key]) => /^stock_\d+$/.test(key));
   for (const [key, value] of entries) {
     const id = Number(key.slice(6));
     const stock = Math.max(0, Math.floor(Number(String(value).replace(',', '.')) || 0));
