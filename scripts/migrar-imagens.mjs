@@ -16,9 +16,9 @@ if (!dryRun && !process.env.BLOB_READ_WRITE_TOKEN) {
 
 const sql = neon(databaseUrl);
 const tables = [
-  { name: 'products', select: "SELECT id, image_url FROM products WHERE image_url LIKE 'data:image/%' ORDER BY id" },
-  { name: 'product_images', select: "SELECT id, image_url FROM product_images WHERE image_url LIKE 'data:image/%' ORDER BY id" },
-  { name: 'banners', select: "SELECT id, image_url FROM banners WHERE image_url LIKE 'data:image/%' ORDER BY id" },
+  { name: 'products', select: "SELECT id, image_url FROM products WHERE image_url LIKE 'data:image/%' ORDER BY id", drySelect: "SELECT id, length(image_url) AS image_length FROM products WHERE image_url LIKE 'data:image/%' ORDER BY id" },
+  { name: 'product_images', select: "SELECT id, image_url FROM product_images WHERE image_url LIKE 'data:image/%' ORDER BY id", drySelect: "SELECT id, length(image_url) AS image_length FROM product_images WHERE image_url LIKE 'data:image/%' ORDER BY id" },
+  { name: 'banners', select: "SELECT id, image_url FROM banners WHERE image_url LIKE 'data:image/%' ORDER BY id", drySelect: "SELECT id, length(image_url) AS image_length FROM banners WHERE image_url LIKE 'data:image/%' ORDER BY id" },
 ];
 
 const extensions = {
@@ -89,13 +89,17 @@ async function migrateOne(table, row) {
 async function main() {
   console.log(dryRun ? 'Modo DRY-RUN: nenhuma imagem será enviada ou alterada.' : 'Iniciando migração de imagens para o Vercel Blob.');
   for (const table of tables) {
-    const rows = await sql.query(table.select);
+    const rows = await sql.query(dryRun ? table.drySelect : table.select);
     total += rows.length;
-    console.log(`\\n${table.name}: ${rows.length} imagem(ns) antiga(s) encontrada(s).`);
-    for (const row of rows) await migrateOne(table, row);
+    console.log(`\n${table.name}: ${rows.length} imagem(ns) antiga(s) encontrada(s).`);
+    if (dryRun) {
+      for (const row of rows) console.log(`[DRY-RUN] ${table.name} #${row.id}: imagem com ${row.image_length} caracteres; nenhuma alteração será feita.`);
+    } else {
+      for (const row of rows) await migrateOne(table, row);
+    }
   }
 
-  console.log('\\n========== RELATÓRIO ==========');
+  console.log('\n========== RELATÓRIO ==========');
   console.log(`Encontradas: ${total}`);
   console.log(dryRun ? `A migrar (simulação): ${total - failed}` : `Migradas: ${migrated}`);
   console.log(`Falharam: ${failed}`);
