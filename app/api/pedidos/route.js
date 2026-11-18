@@ -57,9 +57,9 @@ export async function POST(request) {
   for (const requested of requestedLines) {
     const p = products.find((row) => row.id === requested.id);
     if (!p || !p.active) return fail('Um dos produtos do carrinho não está mais disponível.');
-    const minimum = Math.max(1, Number(p.min_quantity) || 1);
-    if (requested.qty < minimum) return fail(`A quantidade mínima de "${p.name}" é de ${minimum} unidades.`);
-    const availableColors = Array.isArray(p.colors) ? p.colors : [];
+    const availableColors = Array.isArray(p.colors)
+      ? p.colors.map((item) => typeof item === 'string' ? item : String(item?.name || item?.color || item?.cor || '')).filter(Boolean)
+      : [];
     if (availableColors.length && !availableColors.includes(requested.color)) {
       return fail(`Escolha uma cor válida para "${p.name}".`);
     }
@@ -76,6 +76,10 @@ export async function POST(request) {
 
   for (const [id, qty] of qtyById) {
     const p = products.find((row) => row.id === id);
+    const minimum = Math.max(1, Number(p.min_quantity) || 1);
+    if (qty < minimum) {
+      return fail(`Faltam ${minimum - qty} ${minimum - qty === 1 ? 'unidade' : 'unidades'} para completar o mínimo de ${minimum} de "${p.name}".`);
+    }
     if (qty > p.stock) return fail(`Estoque insuficiente para "${p.name}" (disponível: ${p.stock}).`);
   }
 
