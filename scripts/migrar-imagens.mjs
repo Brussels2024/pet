@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { put } from '@vercel/blob';
 import { Buffer } from 'node:buffer';
+import { createHash } from 'node:crypto';
 
 const dryRun = process.argv.includes('--dry-run');
 const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
@@ -31,6 +32,7 @@ const extensions = {
 let migrated = 0;
 let failed = 0;
 let total = 0;
+const uploadedByHash = new Map();
 
 function decodeDataUrl(value) {
   const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/.exec(value || '');
@@ -52,29 +54,35 @@ async function migrateOne(table, row) {
       return;
     }
 
-    // Caminho determinístico: se a execução parar antes de atualizar o Neon,
-    // a próxima execução reutiliza o mesmo objeto em vez de criar outro arquivo.
-    const pathname = `migracao-legado/${table.name}/${row.id}.${extension}`;
-    const blob = await put(pathname, buffer, {
-      access: 'public',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: mimeType,
-      cacheControlMaxAge: 31536000,
-    });
+    // O hash cria um caminho estável e compartilhado por imagens idênticas.
+    // Se a execução parar antes de atualizar o Neon, a próxima execução reutiliza o mesmo objeto.
+    const digest = createHash('sha256').update(buffer).digest('hex');
+    let blobUrl = uploadedByHash.get(digest);
+    if (!blobUrl) {
+      const pathname = `migracao-legado/${digest}.${extension}`;
+      const blob = await put(pathname, buffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: mimeType,
+        cacheControlMaxAge: 31536000,
+      });
 
-    const verification = await fetch(blob.url, { method: 'GET', cache: 'no-store' });
-    if (verification.status !== 200) {
+      const verification = await fetch(blob.url, { method: 'GET', cache: 'no-store' });
+      if (verification.status !== 200) {
+        await verification.body?.cancel();
+        throw new Error(`A nova URL respondeu HTTP ${verification.status}, não 200.`);
+      }
       await verification.body?.cancel();
-      throw new Error(`A nova URL respondeu HTTP ${verification.status}, não 200.`);
+      blobUrl = blob.url;
+      uploadedByHash.set(digest, blobUrl);
     }
-    await verification.body?.cancel();
 
     // Atualiza somente se a imagem ainda for exatamente a original lida.
     // Isso evita sobrescrever uma edição feita por alguém durante a migração.
     const updated = await sql.query(
       `UPDATE ${table.name} SET image_url = $1 WHERE id = $2 AND image_url = $3 RETURNING id`,
-      [blob.url, row.id, row.image_url]
+      [blobUrl, row.id, row.image_url]
     );
     if (!updated.length) throw new Error('O registro mudou durante a migração; o banco foi preservado.');
 
