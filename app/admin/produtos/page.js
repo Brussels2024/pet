@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { query } from '@/lib/db';
 import { brl } from '@/lib/format';
-import { setStock } from '../actions';
+import { setStock, setAllStocks } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,11 +37,13 @@ export default async function ProdutosPage({ searchParams }) {
           <input name="q" defaultValue={q} placeholder="Buscar por nome ou código" />
           <button className="btn outline" type="submit">Buscar</button>
         </form>
+        <button className="btn" type="submit" form="bulk-stock-form">Salvar todos</button>
       </div>
 
       {products.length === 0 ? (
         <p className="muted">Nenhum produto cadastrado.</p>
       ) : (
+        <form id="bulk-stock-form" action={setAllStocks}>
         <div className="table-wrap">
           <table>
             <thead>
@@ -73,11 +75,7 @@ export default async function ProdutosPage({ searchParams }) {
                   <td>{p.category || <span className="muted">Sem categoria</span>}</td>
                   <td>{brl(p.price)}</td>
                   <td>
-                    <form action={setStock} className="inline-form">
-                      <input type="hidden" name="id" value={p.id} />
-                      <input name="stock" type="number" min="0" defaultValue={p.stock} style={{ width: 90 }} />
-                      <button className="btn small outline" type="submit">Salvar</button>
-                    </form>
+                    <input name={`stock_${p.id}`} type="number" min="0" defaultValue={p.stock} style={{ width: 90 }} />
                   </td>
                   <td>{p.priority ? <span className="tag product-featured-tag">Prioritário</span> : <span className="muted">—</span>}</td>
                   <td>{p.active ? <span className="tag ativo">Ativo</span> : <span className="tag">Oculto</span>}</td>
@@ -87,6 +85,7 @@ export default async function ProdutosPage({ searchParams }) {
             </tbody>
           </table>
         </div>
+        </form>
       )}
     </>
   );
