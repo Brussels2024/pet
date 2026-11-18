@@ -33,6 +33,7 @@ export default function AdminNotifications() {
       }).catch(() => {});
     }
     const poll = async () => {
+      if (!active || document.visibilityState !== 'visible') return;
       try {
         const suffix = lastId.current === null ? '?initial=1' : `?after=${lastId.current}`;
         const response = await fetch(`/api/admin/notificacoes${suffix}`, { cache: 'no-store' });
@@ -56,9 +57,17 @@ export default function AdminNotifications() {
         }
       } catch {}
     };
-    poll();
-    const timer = window.setInterval(poll, 8000);
-    return () => { active = false; window.clearInterval(timer); };
+    if (document.visibilityState === 'visible') poll();
+    const timer = window.setInterval(poll, 300000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   async function enableNotifications() {
