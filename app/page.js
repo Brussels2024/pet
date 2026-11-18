@@ -51,8 +51,8 @@ export default async function Home({ searchParams }) {
           FROM product_categories pc
           JOIN categories linked_category ON linked_category.id = pc.category_id
          WHERE pc.product_id = p.id
-           AND (pc.category_id = ${n} OR linked_category.parent_id = ${n})
-      ) OR p.category_id = ${n} OR p.category_id IN (SELECT id FROM categories WHERE parent_id = ${n}))`
+           AND (pc.category_id = $${n} OR linked_category.parent_id = $${n})
+      ) OR p.category_id = $${n} OR p.category_id IN (SELECT id FROM categories WHERE parent_id = $${n}))`
     );
   }
   if (q) {
