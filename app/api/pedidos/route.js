@@ -54,20 +54,20 @@ export async function POST(request) {
     if (!Number.isSafeInteger(id) || id <= 0) return fail('Produto inválido.');
     if (Array.isArray(item.variants) && item.variants.length) {
       for (const variant of item.variants) {
-        const qty = Math.floor(Number(variant.qty));
+        const qty = Number(variant.qty);
         const color = String(variant.color || '').trim().slice(0, 60);
-        if (!color || qty <= 0 || qty > 100) return fail('Confira a cor e a quantidade dos produtos.');
+        if (!color || !Number.isSafeInteger(qty) || qty <= 0) return fail('Confira a cor e a quantidade dos produtos.');
         const nextQty = (qtyById.get(id) || 0) + qty;
-        if (nextQty > 100) return fail('Quantidade máxima por produto: 100 unidades.');
+        if (!Number.isSafeInteger(nextQty)) return fail('Quantidade de produto inválida.');
         qtyById.set(id, nextQty);
         requestedLines.push({ id, qty, color });
       }
     } else {
-      const qty = Math.floor(Number(item.qty));
+      const qty = Number(item.qty);
       const color = String(item.color || '').trim().slice(0, 60);
-      if (qty <= 0 || qty > 100) return fail('Quantidade de produto inválida.');
+      if (!Number.isSafeInteger(qty) || qty <= 0) return fail('Quantidade de produto inválida.');
       const nextQty = (qtyById.get(id) || 0) + qty;
-      if (nextQty > 100) return fail('Quantidade máxima por produto: 100 unidades.');
+      if (!Number.isSafeInteger(nextQty)) return fail('Quantidade de produto inválida.');
       qtyById.set(id, nextQty);
       requestedLines.push({ id, qty, color });
     }
