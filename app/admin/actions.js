@@ -79,17 +79,31 @@ export async function saveProduct(formData) {
     images.push(value);
   }
   const cover = images[0] || '';
+  const sku = text(formData, 'sku');
+  let colors = [];
+  try {
+    const raw = JSON.parse(text(formData, 'colors_json') || '[]');
+    colors = (Array.isArray(raw) ? raw : []).map((item) => {
+      const colorName = String(item?.name || '').trim().slice(0, 60);
+      const abbreviation = String(item?.abbreviation || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+      if (!colorName) return null;
+      const suffix = abbreviation || colorName.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2);
+      return { name: colorName, abbreviation: suffix, sku: sku ? sku + '-' + suffix : '' };
+    }).filter(Boolean);
+  } catch { return; }
+  const categoryIds = [...new Set(formData.getAll('category_ids').map(Number).filter((value) => Number.isInteger(value) && value > 0))];
   const values = [
     name,
     text(formData, 'description'),
-    text(formData, 'sku'),
+    sku,
     num(formData, 'price').toFixed(2),
     Math.max(0, Math.floor(num(formData, 'stock'))),
     cover,
-    Number(formData.get('category_id')) || null,
+    categoryIds[0] || null,
     formData.get('active') === 'on',
     formData.get('priority') === 'on',
     formData.get('category_featured') === 'on',
+    JSON.stringify(colors),
   ];
 
   let productId = id;
@@ -97,20 +111,24 @@ export async function saveProduct(formData) {
     await query(
       `UPDATE products
          SET name = $1, description = $2, sku = $3, price = $4, stock = $5,
-             image_url = $6, category_id = $7, active = $8, priority = $9, category_featured = $10
-       WHERE id = $11`,
+             image_url = $6, category_id = $7, active = $8, priority = $9, category_featured = $10, colors = $11::jsonb
+       WHERE id = $12`,
       [...values, id]
     );
   } else {
     const inserted = await query(
-      `INSERT INTO products (name, description, sku, price, stock, image_url, category_id, active, priority, category_featured)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      `INSERT INTO products (name, description, sku, price, stock, image_url, category_id, active, priority, category_featured, colors)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb) RETURNING id`,
       values
     );
     productId = inserted[0]?.id;
   }
 
   if (!productId) throw new Error('Não foi possível salvar o produto.');
+  await query('DELETE FROM product_categories WHERE product_id = $1', [productId]);
+  for (const categoryId of categoryIds) {
+    await query('INSERT INTO product_categories (product_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [productId, categoryId]);
+  }
   await query('DELETE FROM product_images WHERE product_id = $1', [productId]);
   for (let i = 0; i < images.length; i++) {
     await query(
@@ -119,6 +137,7 @@ export async function saveProduct(formData) {
     );
   }
   revalidatePath('/admin/produtos');
+  revalidatePath('/admin/vitrines');
   revalidatePath('/');
   revalidatePath('/produto/' + productId);
   redirect('/admin/produtos');
