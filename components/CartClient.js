@@ -39,7 +39,6 @@ export default function CartClient({ minOrder, status }) {
 
   const keyOf = (item) => String(item.id) + '::' + String(item.color || '');
   const changeQty = (key, value) => {
-    const item = cart.find((i) => keyOf(i) === key);
     const qty = Math.max(1, Math.floor(Number(value) || 1));
     save(cart.map((i) => (keyOf(i) === key ? { ...i, qty } : i)));
   };
@@ -51,6 +50,7 @@ export default function CartClient({ minOrder, status }) {
   for (const item of cart) {
     const id = String(item.id);
     const current = quantitiesByProduct.get(id) || {
+      id,
       name: item.name,
       qty: 0,
       minimum: Math.max(1, Number(item.min_quantity) || 1),
@@ -144,7 +144,7 @@ export default function CartClient({ minOrder, status }) {
           </div>
         )}
         {productsBelowMinimum.map((item) => (
-          <div className="msg warn" key={item.name}>
+          <div className="msg warn" key={item.id}>
             Faltam {item.minimum - item.qty} {item.minimum - item.qty === 1 ? 'unidade' : 'unidades'} para completar o mínimo de {item.minimum} de {item.name}.
           </div>
         ))}
