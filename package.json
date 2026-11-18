@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
+    "@vercel/blob": "^1.1.1",
     "bcryptjs": "^2.4.3",
     "fflate": "^0.8.2",
     "jose": "^5.9.6",
