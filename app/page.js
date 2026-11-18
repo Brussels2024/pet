@@ -7,6 +7,8 @@ import ProductCarousel, { ProductRail } from '@/components/ProductCarousel';
 
 export const dynamic = 'force-dynamic';
 
+// Featured rails use the category name when linked to a category.
+
 export default async function Home({ searchParams }) {
   const sp = await searchParams;
   const q = String(sp?.q || '').trim();
