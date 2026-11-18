@@ -4,7 +4,9 @@ import { useState } from 'react';
 
 export default function AddToCart({ product }) {
   const minimum = Math.max(1, Number(product.min_quantity) || 1);
-  const colors = Array.isArray(product.colors) ? product.colors : [];
+  const colors = Array.isArray(product.colors)
+    ? product.colors.map((item) => typeof item === 'string' ? item : String(item?.name || item?.color || item?.cor || '')).filter(Boolean)
+    : [];
   const [qty, setQty] = useState(String(minimum));
   const [color, setColor] = useState(colors[0] || '');
   const [added, setAdded] = useState(false);
