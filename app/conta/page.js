@@ -20,7 +20,7 @@ export default async function ContaPage({ searchParams }) {
   const novoPedido = sp?.pedido ? Number(sp.pedido) : null;
 
   const orders = await query(
-    'SELECT id, status, payment_method, total, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50',
+    'SELECT id, status, payment_method, total, asaas_payment_url, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50',
     [user.id]
   );
 
@@ -30,7 +30,7 @@ export default async function ContaPage({ searchParams }) {
 
       {novoPedido && (
         <div className="msg ok">
-          Pedido #{novoPedido} enviado! Entraremos em contato para combinar o pagamento e o frete.
+          Pedido #{novoPedido} criado. Se ainda estiver pendente, finalize pelo link de cobrança na lista de pedidos.
         </div>
       )}
 
@@ -60,6 +60,7 @@ export default async function ContaPage({ searchParams }) {
                 <th>Pagamento</th>
                 <th>Total</th>
                 <th>Situação</th>
+                <th>Cobrança</th>
               </tr>
             </thead>
             <tbody>
@@ -70,6 +71,7 @@ export default async function ContaPage({ searchParams }) {
                   <td style={{ textTransform: 'capitalize' }}>{o.payment_method}</td>
                   <td>{brl(o.total)}</td>
                   <td>{o.status}</td>
+                  <td>{o.asaas_payment_url && o.status !== 'pago' ? <a className="btn small" href={o.asaas_payment_url} target="_blank" rel="noreferrer">Pagar no Asaas</a> : o.status === 'pago' ? 'Pago' : '—'}</td>
                 </tr>
               ))}
             </tbody>

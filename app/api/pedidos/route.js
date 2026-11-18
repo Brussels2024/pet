@@ -59,7 +59,7 @@ export async function POST(request) {
     if (!p || !p.active) return fail('Um dos produtos do carrinho não está mais disponível.');
     const minimum = Math.max(1, Number(p.min_quantity) || 1);
     if (requested.qty < minimum) return fail(`A quantidade mínima de "${p.name}" é de ${minimum} unidades.`);
-    const availableColors = Array.isArray(p.colors) ? p.colors : [];
+    const availableColors = Array.isArray(p.colors) ? p.colors.map((item) => typeof item === 'string' ? item : String(item?.name || item?.color || item?.cor || '').trim()).filter(Boolean) : [];
     if (availableColors.length && !availableColors.includes(requested.color)) {
       return fail(`Escolha uma cor válida para "${p.name}".`);
     }
@@ -121,11 +121,49 @@ export async function POST(request) {
     throw error;
   }
 
+  const apiKey = process.env.ASAAS_API_KEY;
+  const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
+  if (!apiKey || !webhookToken) {
+    await query('DELETE FROM orders WHERE id = $1', [orderId]);
+    for (const line of reservedLines) await query('UPDATE products SET stock = stock + $1 WHERE id = $2', [line.qty, line.id]);
+    return fail('A integração de cobrança Asaas não está configurada no servidor.', 503);
+  }
+
+  const asaasBase = String(process.env.ASAAS_ENV || '').toLowerCase().includes('sandbox') ? 'https://api-sandbox.asaas.com/v3' : 'https://api.asaas.com/v3';
+  const billingType = { pix: 'PIX', boleto: 'BOLETO', cartao: 'CREDIT_CARD' }[payment];
+  let paymentLink;
+  try {
+    const asaasResponse = await fetch(asaasBase + '/paymentLinks', {
+      method: 'POST',
+      headers: { access_token: apiKey, accept: 'application/json', 'content-type': 'application/json', 'User-Agent': 'BrusselsPet/1.0.0' },
+      body: JSON.stringify({
+        name: `Pedido Brussels Pet #${orderId}`,
+        description: lines.map((line) => `${line.name} x${line.qty}`).join('; ').slice(0, 500),
+        value: Number(total.toFixed(2)),
+        billingType,
+        chargeType: 'DETACHED',
+        ...(payment === 'boleto' ? { dueDateLimitDays: 5 } : {}),
+        externalReference: `BP-ORDER-${orderId}`,
+        notificationEnabled: true,
+        callback: { successUrl: `https://www.brusselspet.com.br/conta?pedido=${orderId}&pagamento=retorno`, autoRedirect: false },
+      }),
+    });
+    const payload = await asaasResponse.json().catch(() => ({}));
+    if (!asaasResponse.ok || !payload.id || !payload.url) throw new Error(payload.errors?.[0]?.description || 'O Asaas não retornou o link de cobrança.');
+    paymentLink = payload;
+  } catch (error) {
+    await query('DELETE FROM orders WHERE id = $1', [orderId]);
+    for (const line of reservedLines) await query('UPDATE products SET stock = stock + $1 WHERE id = $2', [line.qty, line.id]);
+    return fail('Não foi possível gerar a cobrança no Asaas. ' + String(error?.message || '').slice(0, 180), 502);
+  }
+
+  await query('UPDATE orders SET asaas_payment_link_id = $1, asaas_payment_url = $2 WHERE id = $3', [paymentLink.id, paymentLink.url, orderId]);
+
   await query(
     "INSERT INTO admin_notifications (order_id, event_type) VALUES ($1, 'checkout_pending') ON CONFLICT (order_id, event_type) DO NOTHING",
     [orderId]
   );
   await sendAdminPush({ type: 'checkout_pending', orderId });
 
-  return NextResponse.json({ ok: true, orderId });
+  return NextResponse.json({ ok: true, orderId, paymentUrl: paymentLink.url });
 }

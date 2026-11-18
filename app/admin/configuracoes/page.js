@@ -24,6 +24,14 @@ export default async function ConfiguracoesPage() {
         <Link className="btn" href="/admin/configuracoes/frete">Gerenciar cidades</Link>
       </div>
 
+      <div className="card" style={{ maxWidth: 560, marginBottom: 20 }}>
+        <h2 style={{ marginTop: 0 }}>Cobranças Asaas</h2>
+        <p className="muted">Conecte a confirmação automática dos pagamentos aos pedidos da Brussels Pet.</p>
+        <form action="/api/admin/asaas/setup" method="post">
+          <button className="btn" type="submit">Conectar cobrança Asaas</button>
+        </form>
+      </div>
+
       <form action={saveSettings} className="card" style={{ maxWidth: 560 }}>
         <h2 style={{ marginTop: 0 }}>Loja</h2>
         <div className="field">

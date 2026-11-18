@@ -70,7 +70,7 @@ export default function CartClient({ minOrder, status }) {
       }
       localStorage.removeItem('bp_cart');
       window.dispatchEvent(new Event('cart-changed'));
-      window.location.href = `/conta?pedido=${data.orderId}`;
+      window.location.href = data.paymentUrl || `/conta?pedido=${data.orderId}`;
     } catch {
       setError('Erro de conexão. Tente novamente.');
       setBusy(false);
