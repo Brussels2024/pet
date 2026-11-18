@@ -107,8 +107,8 @@ export default function AddToCart({ product }) {
       )}
       <button
         type="button"
-        className="btn small"
-        style={{ width: 'auto', minWidth: 0, padding: '6px 10px', fontSize: 12, lineHeight: 1.2, minHeight: 30, flexShrink: 0 }}
+        className="btn"
+        style={{ width: 'fit-content', minWidth: 0, padding: '4px 6px', height: 32, minHeight: 0, flex: '0 0 auto' }}
         onClick={add}
         disabled={colors.length
           ? selectedTotal < minimum || exceedsStock || selectedTotal === 0
