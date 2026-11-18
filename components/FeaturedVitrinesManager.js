@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createFeaturedCollection, saveFeaturedCollection } from '../actions';
+import { createFeaturedCollection, saveFeaturedCollection } from '@/app/admin/actions';
 
 export default function FeaturedVitrinesManager({ collections, products, assignments }) {
   const [selectedId, setSelectedId] = useState(collections[0]?.id ?? null);
