@@ -50,20 +50,22 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
       </div>
       <div className="products showcase-products">
         {visibleProducts.map((p) => (
-          <article className="product product-clickable" key={p.id}>
+          <article className="product" key={p.id}>
             <Link
-              className="product-detail-link"
+              className="product-main-link"
+              style={{ display: 'block', color: 'inherit' }}
               href={`/produto/${encodeURIComponent(String(p.id))}`}
               aria-label={'Ver detalhes de ' + p.name}
               title={'Ver detalhes de ' + p.name}
-            />
-            <div className="photo">
-              {p.image_url ? <img src={p.image_url} alt={p.name} loading="lazy" /> : 'Sem foto'}
-            </div>
-            <div className="info">
-              <div className="name">{p.name}</div>
-              {p.sku && <div className="sku">Cód. {p.sku}</div>}
-            </div>
+            >
+              <div className="photo">
+                {p.image_url ? <img src={p.image_url} alt={p.name} loading="lazy" /> : 'Sem foto'}
+              </div>
+              <div className="info">
+                <div className="name">{p.name}</div>
+                {p.sku && <div className="sku">Cód. {p.sku}</div>}
+              </div>
+            </Link>
             <div className="info product-purchase-info">
               {showPrice ? (
                 <>
