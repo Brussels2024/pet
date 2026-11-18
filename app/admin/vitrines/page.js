@@ -1,5 +1,5 @@
 import { query } from '@/lib/db';
-import FeaturedVitrinesManager from '@/components/FeaturedVitrinesManager';
+import FeaturedVitrinesManager from '../../../components/FeaturedVitrinesManager';
 
 export const dynamic = 'force-dynamic';
 
