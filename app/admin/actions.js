@@ -284,10 +284,14 @@ export async function saveFeaturedCollection(formData) {
   const title = text(formData, 'title').slice(0, 80);
   const active = formData.get('active') === 'on';
   if (!Number.isInteger(id) || id < 1 || !title) return;
-  const exists = await query('SELECT id FROM featured_collections WHERE id = $1', [id]);
+  const exists = await query(
+    'SELECT fc.id, fc.category_id, c.name AS category_name FROM featured_collections fc LEFT JOIN categories c ON c.id = fc.category_id WHERE fc.id = $1',
+    [id]
+  );
   if (!exists.length) return;
   const productIds = [...new Set(formData.getAll('product_ids').map(Number).filter((value) => Number.isInteger(value) && value > 0))];
-  await query('UPDATE featured_collections SET title = $1, active = $2 WHERE id = $3', [title, active, id]);
+  const savedTitle = exists[0].category_id ? (exists[0].category_name || title) : title;
+  await query('UPDATE featured_collections SET title = $1, active = $2 WHERE id = $3', [savedTitle, active, id]);
   await query('DELETE FROM featured_collection_products WHERE collection_id = $1', [id]);
   for (let i = 0; i < productIds.length; i++) {
     await query(
