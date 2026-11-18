@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createFeaturedCollection, saveFeaturedCollection } from '@/app/admin/actions';
+import { saveFeaturedCollection } from '@/app/admin/actions';
 
 export default function FeaturedVitrinesManager({ collections, products, assignments }) {
   const [selectedId, setSelectedId] = useState(collections[0]?.id ?? null);
@@ -12,17 +12,10 @@ export default function FeaturedVitrinesManager({ collections, products, assignm
   return (
     <>
       <section className="card" style={{ marginBottom: 18 }}>
-        <form action={createFeaturedCollection} className="inline-form">
-          <input name="title" type="text" maxLength={80} placeholder="Nome da nova linha (ex.: Neon, Brinquedos)" required />
-          <button className="btn" type="submit">Criar vitrine</button>
-        </form>
-      </section>
-
-      <section className="card" style={{ marginBottom: 18 }}>
-        <h2 style={{ marginTop: 0 }}>Escolha a vitrine</h2>
-        <p className="muted">Clique em uma vitrine que você já criou. Depois marque os produtos que devem aparecer nela.</p>
+        <h2 style={{ marginTop: 0 }}>Categorias disponíveis para vitrines</h2>
+        <p className="muted">As categorias vêm diretamente do cadastro existente. Selecione uma para escolher os produtos e definir se ela aparece na loja. Marcar ou salvar uma categoria não altera as demais.</p>
         {collections.length === 0 ? (
-          <p className="muted">Nenhuma vitrine criada ainda. Digite um nome acima e clique em “Criar vitrine”.</p>
+          <p className="muted">Ainda não há categorias cadastradas no sistema.</p>
         ) : (
           <div className="featured-vitrine-options">
             {collections.map((collection) => (
@@ -30,11 +23,12 @@ export default function FeaturedVitrinesManager({ collections, products, assignm
                 key={collection.id}
                 type="button"
                 className={'featured-vitrine-option' + (selectedId === collection.id ? ' selected' : '')}
-                onClick={() => setSelectedId(collection.id)}
+                onClick={() => setSelectedId(selectedId === collection.id ? null : collection.id)}
                 aria-pressed={selectedId === collection.id}
               >
-                <span className="featured-vitrine-check">{selectedId === collection.id ? '✓' : ''}</span>
+                <span className="featured-vitrine-check">{collection.active ? '✓' : ''}</span>
                 <span>{collection.title}</span>
+                <small>{collection.active ? 'Na vitrine' : 'Oculta'}</small>
               </button>
             ))}
           </div>
@@ -42,16 +36,16 @@ export default function FeaturedVitrinesManager({ collections, products, assignm
       </section>
 
       {selectedCollection && (
-        <section className="card">
+        <section className="card" key={selectedCollection.id}>
           <form action={saveFeaturedCollection}>
             <input type="hidden" name="id" value={selectedCollection.id} />
             <input type="hidden" name="title" value={selectedCollection.title} />
             <div className="featured-vitrine-heading">
               <div>
-                <h2 style={{ margin: 0 }}>Produtos da vitrine: {selectedCollection.title}</h2>
-                <p className="muted">Marque produto por produto. Um mesmo produto pode participar de outras vitrines também.</p>
+                <h2 style={{ margin: 0 }}>Produtos da categoria: {selectedCollection.title}</h2>
+                <p className="muted">Escolha os produtos desta vitrine. O mesmo produto pode aparecer em outras categorias também.</p>
               </div>
-              <label className="featured-vitrine-active"><input type="checkbox" name="active" defaultChecked={selectedCollection.active} /> Exibir na loja</label>
+              <label className="featured-vitrine-active"><input type="checkbox" name="active" defaultChecked={selectedCollection.active} /> Exibir esta categoria na loja</label>
             </div>
             <div className="line-product-picker">
               {products.map((product) => (
@@ -63,7 +57,7 @@ export default function FeaturedVitrinesManager({ collections, products, assignm
               ))}
             </div>
             <div className="row-actions" style={{ marginTop: 16 }}>
-              <button className="btn" type="submit">Salvar vitrine {selectedCollection.title}</button>
+              <button className="btn" type="submit">Salvar categoria {selectedCollection.title}</button>
             </div>
           </form>
         </section>
