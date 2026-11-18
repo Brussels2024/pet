@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { query } from '@/lib/db';
 import { saveProduct } from '../../actions';
 import ImagePicker from '@/components/ImagePicker';
+import ProductVariantEditor from '@/components/ProductVariantEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,15 +23,22 @@ export default async function ProdutoFormPage({ params }) {
     active: true,
     priority: false,
     category_featured: false,
+    colors: [],
   };
   let imageValues = [];
+  let selectedCategoryIds = [];
 
   if (!isNew) {
     const rows = await query('SELECT * FROM products WHERE id = $1', [Number(id) || 0]);
     if (!rows.length) notFound();
     product = rows[0];
-    const savedImages = await query('SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 6', [Number(id)]);
+    const [savedImages, relations] = await Promise.all([
+      query('SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY position LIMIT 6', [Number(id)]),
+      query('SELECT category_id FROM product_categories WHERE product_id = $1 ORDER BY category_id', [Number(id)]),
+    ]);
     imageValues = savedImages.map((image) => image.image_url);
+    selectedCategoryIds = relations.map((row) => Number(row.category_id));
+    if (!selectedCategoryIds.length && product.category_id) selectedCategoryIds = [Number(product.category_id)];
     if (!imageValues.length && product.image_url) imageValues = [product.image_url];
   }
 
@@ -62,13 +70,16 @@ export default async function ProdutoFormPage({ params }) {
             <input id="sku" name="sku" defaultValue={product.sku || ''} />
           </div>
           <div className="field">
-            <label htmlFor="category_id">Categoria / subcategoria</label>
-            <select id="category_id" name="category_id" defaultValue={product.category_id || ''}>
-              <option value="">Sem categoria</option>
-              {options.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
+            <label>Categorias do produto</label>
+            <p className="muted">Você pode selecionar quantas categorias quiser para o mesmo anúncio.</p>
+            <div className="line-product-picker">
+              {options.map((option) => (
+                <label className="line-product-option" key={option.id}>
+                  <input type="checkbox" name="category_ids" value={option.id} defaultChecked={selectedCategoryIds.includes(Number(option.id))} />
+                  <span>{option.label}</span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
         </div>
         <div className="grid2">
@@ -95,6 +106,7 @@ export default async function ProdutoFormPage({ params }) {
             ))}
           </div>
         </div>
+        <ProductVariantEditor initialColors={product.colors || []} baseSku={product.sku || ''} />
         <div className="field">
           <label htmlFor="description">Descrição</label>
           <textarea id="description" name="description" rows={4} defaultValue={product.description || ''} />
