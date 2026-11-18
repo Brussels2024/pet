@@ -40,14 +40,26 @@ export default function CartClient({ minOrder, status }) {
   const keyOf = (item) => String(item.id) + '::' + String(item.color || '');
   const changeQty = (key, value) => {
     const item = cart.find((i) => keyOf(i) === key);
-    const minimum = Math.max(1, Number(item?.min_quantity) || 1);
-    const qty = Math.max(minimum, Math.floor(Number(value) || minimum));
+    const qty = Math.max(1, Math.floor(Number(value) || 1));
     save(cart.map((i) => (keyOf(i) === key ? { ...i, qty } : i)));
   };
   const remove = (key) => save(cart.filter((i) => keyOf(i) !== key));
 
   const total = cart.reduce((sum, i) => sum + Number(i.price) * i.qty, 0);
   const belowMin = total < minOrder;
+  const quantitiesByProduct = new Map();
+  for (const item of cart) {
+    const id = String(item.id);
+    const current = quantitiesByProduct.get(id) || {
+      name: item.name,
+      qty: 0,
+      minimum: Math.max(1, Number(item.min_quantity) || 1),
+    };
+    current.qty += Number(item.qty) || 0;
+    quantitiesByProduct.set(id, current);
+  }
+  const productsBelowMinimum = [...quantitiesByProduct.values()]
+    .filter((item) => item.qty < item.minimum);
 
   async function finish() {
     setError('');
@@ -105,7 +117,7 @@ export default function CartClient({ minOrder, status }) {
                 <td>{i.name}</td>
                 <td>{brl(i.price)}</td>
                 <td style={{ width: 100 }}>
-                  <input type="number" min={Math.max(1, Number(i.min_quantity) || 1)} value={i.qty} onChange={(e) => changeQty(keyOf(i), e.target.value)} />
+                  <input type="number" min={1} value={i.qty} onChange={(e) => changeQty(keyOf(i), e.target.value)} />
                 </td>
                 <td>{brl(Number(i.price) * i.qty)}</td>
                 <td>
@@ -131,6 +143,11 @@ export default function CartClient({ minOrder, status }) {
             Faltam {brl(minOrder - total)} para atingir o pedido mínimo.
           </div>
         )}
+        {productsBelowMinimum.map((item) => (
+          <div className="msg warn" key={item.name}>
+            Faltam {item.minimum - item.qty} {item.minimum - item.qty === 1 ? 'unidade' : 'unidades'} para completar o mínimo de {item.minimum} de {item.name}.
+          </div>
+        ))}
 
         <div className="field">
           <label htmlFor="pay">Forma de pagamento</label>
@@ -155,7 +172,7 @@ export default function CartClient({ minOrder, status }) {
           type="button"
           className="btn"
           onClick={finish}
-          disabled={busy || belowMin || status !== 'ok'}
+          disabled={busy || belowMin || productsBelowMinimum.length > 0 || status !== 'ok'}
           style={{ width: '100%' }}
         >
           {busy ? 'Enviando...' : 'Finalizar pedido'}
