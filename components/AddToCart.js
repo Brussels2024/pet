@@ -7,13 +7,13 @@ export default function AddToCart({ product }) {
   const colors = Array.isArray(product.colors)
     ? product.colors.map((item) => typeof item === 'string' ? item : String(item?.name || item?.color || item?.cor || '')).filter(Boolean)
     : [];
-  const [qty, setQty] = useState(String(minimum));
+  const [qty, setQty] = useState('1');
   const [color, setColor] = useState(colors[0] || '');
   const [added, setAdded] = useState(false);
   const soldOut = product.stock <= 0;
 
   function add() {
-    const amount = Math.max(minimum, Math.floor(Number(qty) || minimum));
+    const amount = Math.max(1, Math.floor(Number(qty) || 1));
     if (amount > Number(product.stock)) return;
     if (colors.length && !colors.includes(color)) return;
     try {
@@ -49,17 +49,17 @@ export default function AddToCart({ product }) {
         </label>
       )}
       <label className="field" style={{ minWidth: 110 }}>
-        <span>Quantidade (mín. {minimum})</span>
+        <span>Quantidade</span>
         <input
           type="number"
-          min={minimum}
+          min={1}
           max={product.stock}
           value={qty}
           onChange={(e) => setQty(e.target.value)}
           aria-label="Quantidade"
         />
       </label>
-      <button type="button" className="btn small" onClick={add} disabled={Number(qty) < minimum || Number(qty) > Number(product.stock) || (colors.length > 0 && !color)}>
+      <button type="button" className="btn small" onClick={add} disabled={Number(qty) < 1 || Number(qty) > Number(product.stock) || (colors.length > 0 && !color)}>
         {added ? 'Adicionado ✓' : 'Adicionar'}
       </button>
     </div>
