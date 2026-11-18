@@ -14,13 +14,18 @@ export default function CartClient({ minOrder, status }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (status !== 'ok') {
+      setCart([]);
+      setReady(true);
+      return;
+    }
     try {
       setCart(JSON.parse(localStorage.getItem('bp_cart') || '[]'));
     } catch {
       setCart([]);
     }
     setReady(true);
-  }, []);
+  }, [status]);
 
   function save(next) {
     setCart(next);
@@ -73,7 +78,7 @@ export default function CartClient({ minOrder, status }) {
   }
 
   if (!ready) return null;
-  if (cart.length === 0) {
+  if (status === 'guest' || cart.length === 0) {
     return (
       <p>
         Seu carrinho está vazio. <Link href="/"><b>Ver produtos</b></Link>
@@ -96,7 +101,7 @@ export default function CartClient({ minOrder, status }) {
           </thead>
           <tbody>
             {cart.map((i) => (
-              <tr key={i.id}>
+              <tr key={keyOf(i)}>
                 <td>{i.name}</td>
                 <td>{brl(i.price)}</td>
                 <td style={{ width: 100 }}>
@@ -140,11 +145,6 @@ export default function CartClient({ minOrder, status }) {
           <textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
 
-        {status === 'guest' && (
-          <div className="msg warn">
-            <Link href="/entrar?next=/carrinho"><b>Entre</b></Link> ou <Link href="/cadastro"><b>cadastre sua empresa</b></Link> para finalizar.
-          </div>
-        )}
         {status === 'pendente' && (
           <div className="msg warn">Sua conta ainda está em análise. Você poderá comprar assim que for aprovada.</div>
         )}
