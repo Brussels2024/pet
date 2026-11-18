@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { query } from '@/lib/db';
 import { brl } from '@/lib/format';
-import { setStock, setAllStocks } from '../actions';
+import { setAllStocks } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
