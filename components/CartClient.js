@@ -14,7 +14,7 @@ export default function CartClient({ minOrder, status }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (status !== 'ok') {
+    if (status === 'guest') {
       setCart([]);
       setReady(true);
       return;
