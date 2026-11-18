@@ -8,7 +8,6 @@ const brl = (n) => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency',
 export default function CartClient({ minOrder, status }) {
   const [cart, setCart] = useState([]);
   const [ready, setReady] = useState(false);
-  const [payment, setPayment] = useState('pix');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -32,22 +31,44 @@ export default function CartClient({ minOrder, status }) {
     try {
       localStorage.setItem('bp_cart', JSON.stringify(next));
       window.dispatchEvent(new Event('cart-changed'));
-    } catch {
-      // sem localStorage
-    }
+    } catch {}
   }
 
-  const keyOf = (item) => String(item.id) + '::' + String(item.color || '');
-  const changeQty = (key, value) => {
-    const item = cart.find((i) => keyOf(i) === key);
-    const minimum = Math.max(1, Number(item?.min_quantity) || 1);
-    const qty = Math.max(minimum, Math.floor(Number(value) || minimum));
-    save(cart.map((i) => (keyOf(i) === key ? { ...i, qty } : i)));
-  };
-  const remove = (key) => save(cart.filter((i) => keyOf(i) !== key));
+  function changeQty(id, value) {
+    const qty = Math.max(1, Math.floor(Number(value) || 1));
+    save(cart.map((item) => item.id === id ? { ...item, qty } : item));
+  }
 
-  const total = cart.reduce((sum, i) => sum + Number(i.price) * i.qty, 0);
+  function changeVariantQty(id, color, value) {
+    const qty = Math.max(1, Math.floor(Number(value) || 1));
+    save(cart.map((item) => {
+      if (item.id !== id || !Array.isArray(item.variants)) return item;
+      const variants = item.variants.map((variant) => variant.color === color ? { ...variant, qty } : variant);
+      return { ...item, variants, qty: variants.reduce((sum, variant) => sum + Number(variant.qty || 0), 0) };
+    }));
+  }
+
+  function remove(id) {
+    save(cart.filter((item) => item.id !== id));
+  }
+
+  function removeVariant(id, color) {
+    const next = cart.flatMap((item) => {
+      if (item.id !== id || !Array.isArray(item.variants)) return [item];
+      const variants = item.variants.filter((variant) => variant.color !== color);
+      if (!variants.length) return [];
+      return [{ ...item, variants, qty: variants.reduce((sum, variant) => sum + Number(variant.qty || 0), 0) }];
+    });
+    save(next);
+  }
+
+  const total = cart.reduce((sum, item) => sum + Number(item.price) * Number(item.qty), 0);
   const belowMin = total < minOrder;
+  const rows = cart.flatMap((item) => (
+    Array.isArray(item.variants) && item.variants.length
+      ? item.variants.map((variant) => ({ ...item, variant, rowKey: String(item.id) + '-' + variant.color }))
+      : [{ ...item, variant: null, rowKey: String(item.id) }]
+  ));
 
   async function finish() {
     setError('');
@@ -57,8 +78,13 @@ export default function CartClient({ minOrder, status }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: cart.map((i) => ({ id: i.id, qty: i.qty, color: i.color || '' })),
-          payment,
+          items: cart.map((item) => ({
+            id: item.id,
+            qty: item.qty,
+            ...(Array.isArray(item.variants) && item.variants.length
+              ? { variants: item.variants.map((variant) => ({ color: variant.color, qty: variant.qty })) }
+              : {}),
+          })),
           notes,
         }),
       });
@@ -91,74 +117,57 @@ export default function CartClient({ minOrder, status }) {
       <div className="table-wrap">
         <table>
           <thead>
-            <tr>
-              <th>Produto</th>
-              <th>Preço</th>
-              <th>Qtd.</th>
-              <th>Subtotal</th>
-              <th></th>
-            </tr>
+            <tr><th>Produto</th><th>Preço</th><th>Qtd.</th><th>Subtotal</th><th></th></tr>
           </thead>
           <tbody>
-            {cart.map((i) => (
-              <tr key={keyOf(i)}>
-                <td>{i.name}</td>
-                <td>{brl(i.price)}</td>
-                <td style={{ width: 100 }}>
-                  <input type="number" min={Math.max(1, Number(i.min_quantity) || 1)} value={i.qty} onChange={(e) => changeQty(keyOf(i), e.target.value)} />
-                </td>
-                <td>{brl(Number(i.price) * i.qty)}</td>
-                <td>
-                  <button type="button" className="btn small outline" onClick={() => remove(keyOf(i))}>
-                    Remover
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {rows.map((item) => {
+              const variant = item.variant;
+              const lineQty = variant ? Number(variant.qty) : Number(item.qty);
+              return (
+                <tr key={item.rowKey}>
+                  <td>
+                    <b>{item.name}</b>
+                    {variant && <div className="muted">Cor: {variant.color}{variant.colorSku ? ' · SKU: ' + variant.colorSku : ''}</div>}
+                  </td>
+                  <td>{brl(item.price)}</td>
+                  <td style={{ width: 100 }}>
+                    <input
+                      type="number"
+                      min="1"
+                      value={lineQty}
+                      onChange={(event) => variant
+                        ? changeVariantQty(item.id, variant.color, event.target.value)
+                        : changeQty(item.id, event.target.value)}
+                    />
+                  </td>
+                  <td>{brl(Number(item.price) * lineQty)}</td>
+                  <td>
+                    <button type="button" className="btn small outline" onClick={() => variant ? removeVariant(item.id, variant.color) : remove(item.id)}>
+                      Remover
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <p style={{ fontSize: 20, margin: '0 0 8px' }}>
-          Total: <b>{brl(total)}</b>
-        </p>
+        <p style={{ fontSize: 20, margin: '0 0 8px' }}>Total: <b>{brl(total)}</b></p>
         <p className="muted" style={{ marginTop: 0 }}>
           Pedido mínimo: {brl(minOrder)}. O frete é combinado após a confirmação do pedido.
         </p>
-        {belowMin && (
-          <div className="msg warn">
-            Faltam {brl(minOrder - total)} para atingir o pedido mínimo.
-          </div>
-        )}
-
-        <div className="field">
-          <label htmlFor="pay">Forma de pagamento</label>
-          <select id="pay" value={payment} onChange={(e) => setPayment(e.target.value)}>
-            <option value="pix">Pix</option>
-            <option value="boleto">Boleto</option>
-            <option value="cartao">Cartão</option>
-          </select>
-        </div>
+        {belowMin && <div className="msg warn">Faltam {brl(minOrder - total)} para atingir o pedido mínimo.</div>}
         <div className="field">
           <label htmlFor="notes">Observações</label>
-          <textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <textarea id="notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
         </div>
-
-        {status === 'pendente' && (
-          <div className="msg warn">Sua conta ainda está em análise. Você poderá comprar assim que for aprovada.</div>
-        )}
+        {status === 'pendente' && <div className="msg warn">Sua conta ainda está em análise. Você poderá comprar assim que for aprovada.</div>}
         {status === 'bloqueado' && <div className="msg error">Conta bloqueada. Fale com a Brussels Pet.</div>}
         {error && <div className="msg error">{error}</div>}
-
-        <button
-          type="button"
-          className="btn"
-          onClick={finish}
-          disabled={busy || belowMin || status !== 'ok'}
-          style={{ width: '100%' }}
-        >
-          {busy ? 'Enviando...' : 'Finalizar pedido'}
+        <button type="button" className="btn" onClick={finish} disabled={busy || belowMin || status !== 'ok'} style={{ width: '100%' }}>
+          {busy ? 'Enviando para o Asaas...' : 'Finalizar pedido'}
         </button>
       </div>
     </>
