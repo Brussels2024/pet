@@ -83,7 +83,7 @@ export default function ImportarCategoriasSkuClient() {
       {summary && (
         <div style={{ marginTop: 16 }}>
           <h3>Resultado da importação</h3>
-          <p><b>{summary.linked}</b> vínculos de categoria adicionados ou já existentes.</p>
+          <p><b>{summary.linked}</b> novos vínculos de categoria adicionados.</p>
           <p><b>{summary.productsFound}</b> produtos encontrados pelo SKU.</p>
           <p><b>{summary.categoriesCreated}</b> categorias e <b>{summary.subcategoriesCreated}</b> subcategorias criadas.</p>
           <p><b>{summary.notFound}</b> linhas ignoradas porque o SKU não foi encontrado.</p>
