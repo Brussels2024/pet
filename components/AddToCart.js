@@ -9,30 +9,49 @@ export default function AddToCart({ product }) {
     : [];
   const [qty, setQty] = useState('1');
   const [color, setColor] = useState(colors[0] || '');
+  const [colorQty, setColorQty] = useState({});
   const [added, setAdded] = useState(false);
-  const soldOut = product.stock <= 0;
+  const soldOut = Number(product.stock) <= 0;
+
+  const selectedColors = colors
+    .map((name) => ({ name, qty: Math.max(0, Math.floor(Number(colorQty[name]) || 0)) }))
+    .filter((item) => item.qty > 0);
+  const selectedTotal = selectedColors.reduce((sum, item) => sum + item.qty, 0);
+  const missing = Math.max(0, minimum - selectedTotal);
+  const exceedsStock = selectedTotal > Number(product.stock);
 
   function add() {
-    const amount = Math.max(1, Math.floor(Number(qty) || 1));
-    if (amount > Number(product.stock)) return;
-    if (colors.length && !colors.includes(color)) return;
+    const lines = colors.length
+      ? selectedColors
+      : [{ name: color, qty: Math.max(1, Math.floor(Number(qty) || 1)) }];
+
+    if (colors.length && (selectedTotal < minimum || exceedsStock || !selectedColors.length)) return;
+    if (!colors.length && (lines[0].qty > Number(product.stock) || (color && !colors.includes(color)))) return;
+
     try {
       const cart = JSON.parse(localStorage.getItem('bp_cart') || '[]');
-      const existing = cart.find((item) => item.id === product.id && String(item.color || '') === color);
-      if (existing) existing.qty += amount;
-      else cart.push({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image_url || '',
-        qty: amount,
-        color,
-        min_quantity: minimum,
-      });
+      for (const line of lines) {
+        const existing = cart.find((item) => String(item.id) === String(product.id) && String(item.color || '') === line.name);
+        if (existing) {
+          existing.qty = (Number(existing.qty) || 0) + line.qty;
+          existing.min_quantity = minimum;
+        } else {
+          cart.push({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            image: product.image_url || '',
+            qty: line.qty,
+            color: line.name,
+            min_quantity: minimum,
+          });
+        }
+      }
       localStorage.setItem('bp_cart', JSON.stringify(cart));
       window.dispatchEvent(new Event('cart-changed'));
       setAdded(true);
       setTimeout(() => setAdded(false), 1500);
+      if (colors.length) setColorQty({});
     } catch {}
   }
 
@@ -40,26 +59,60 @@ export default function AddToCart({ product }) {
 
   return (
     <div className="add-row" style={{ flexWrap: 'wrap' }}>
-      {colors.length > 0 && (
-        <label className="field" style={{ minWidth: 150, flex: 1 }}>
-          <span>Cor</span>
-          <select value={color} onChange={(e) => setColor(e.target.value)} aria-label="Escolha a cor">
-            {colors.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
+      {colors.length > 0 ? (
+        <div className="field" style={{ minWidth: 150, flex: 1 }}>
+          <span>Escolha a quantidade por cor</span>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {colors.map((item) => (
+              <label key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <span>{item}</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={product.stock}
+                  value={colorQty[item] ?? '0'}
+                  onChange={(e) => setColorQty((current) => ({ ...current, [item]: e.target.value }))}
+                  aria-label={'Quantidade na cor ' + item}
+                  style={{ width: 84 }}
+                />
+              </label>
+            ))}
+          </div>
+          <span className="muted">
+            Selecionado: {selectedTotal} de {minimum} unidade(s) mínimas
+          </span>
+          {selectedTotal < minimum && (
+            <span className="muted" role="status">
+              Faltam {missing} {missing === 1 ? 'unidade' : 'unidades'} para poder adicionar.
+            </span>
+          )}
+          {exceedsStock && (
+            <span className="muted" role="alert">
+              Quantidade acima do estoque disponível ({product.stock}).
+            </span>
+          )}
+        </div>
+      ) : (
+        <label className="field" style={{ minWidth: 110 }}>
+          <span>Quantidade</span>
+          <input
+            type="number"
+            min={1}
+            max={product.stock}
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            aria-label="Quantidade"
+          />
         </label>
       )}
-      <label className="field" style={{ minWidth: 110 }}>
-        <span>Quantidade</span>
-        <input
-          type="number"
-          min={1}
-          max={product.stock}
-          value={qty}
-          onChange={(e) => setQty(e.target.value)}
-          aria-label="Quantidade"
-        />
-      </label>
-      <button type="button" className="btn small" onClick={add} disabled={Number(qty) < 1 || Number(qty) > Number(product.stock) || (colors.length > 0 && !color)}>
+      <button
+        type="button"
+        className="btn small"
+        onClick={add}
+        disabled={colors.length
+          ? selectedTotal < minimum || exceedsStock || selectedTotal === 0
+          : Number(qty) < 1 || Number(qty) > Number(product.stock)}
+      >
         {added ? 'Adicionado ✓' : 'Adicionar'}
       </button>
     </div>
