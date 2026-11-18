@@ -20,7 +20,13 @@ export default async function Home({ searchParams }) {
   const [cats, banners, collections] = await Promise.all([
     query('SELECT id, name, parent_id FROM categories WHERE active = true ORDER BY position, name, id'),
     query('SELECT id, position, title, image_url, active FROM banners WHERE active = true ORDER BY position'),
-    (!q && !catId) ? query('SELECT fc.id, COALESCE(c.name, fc.title) AS title FROM featured_collections fc LEFT JOIN categories c ON c.id = fc.category_id WHERE fc.active = true AND fc.category_id IS NULL ORDER BY fc.position, fc.id') : Promise.resolve([]),
+    (!q && !catId) ? query(
+      `SELECT fc.id, c.name AS title
+         FROM featured_collections fc
+         JOIN categories c ON c.id = fc.category_id AND c.active = true
+        WHERE fc.active = true AND fc.category_id IS NOT NULL
+        ORDER BY c.position, c.name, c.id`
+    ) : Promise.resolve([]),
   ]);
   const tree = cats
     .filter((c) => !c.parent_id)
