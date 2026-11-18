@@ -41,11 +41,17 @@ export default async function Home({ searchParams }) {
   const where = ['p.active = true'];
   const params = [];
   if (catId) {
-    where.push('p.category_featured = true');
     params.push(catId);
     const n = params.length;
     where.push(
-      `(p.category_id = $${n} OR p.category_id IN (SELECT id FROM categories WHERE parent_id = $${n}))`
+      `(p.category_id = ${n}
+        OR p.category_id IN (SELECT id FROM categories WHERE parent_id = ${n})
+        OR EXISTS (
+          SELECT 1 FROM product_categories pc
+          JOIN categories assigned ON assigned.id = pc.category_id
+          WHERE pc.product_id = p.id
+            AND (assigned.id = ${n} OR assigned.parent_id = ${n})
+        ))`
     );
   }
   if (q) {
