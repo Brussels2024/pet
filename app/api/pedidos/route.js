@@ -3,7 +3,6 @@ import { query, getSetting } from '@/lib/db';
 import { getUser, canSeePrices } from '@/lib/auth';
 import { brl } from '@/lib/format';
 import { enforceRequestLimit } from '@/lib/security';
-import { sendAdminPush } from '@/lib/admin-push';
 
 export const dynamic = 'force-dynamic';
 
@@ -211,11 +210,6 @@ export async function POST(request) {
       [payment.id, payment.invoiceUrl, payment.status || 'PENDING', orderId]
     );
 
-    await query(
-      "INSERT INTO admin_notifications (order_id, event_type) VALUES ($1, 'checkout_pending') ON CONFLICT (order_id, event_type) DO NOTHING",
-      [orderId]
-    );
-    await sendAdminPush({ type: 'checkout_pending', orderId });
 
     return NextResponse.json({ ok: true, orderId, paymentUrl: payment.invoiceUrl });
   } catch (error) {

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { query } from '@/lib/db';
-import { sendAdminPush } from '@/lib/admin-push';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,8 +38,6 @@ export async function POST(request) {
     updated = await query("UPDATE orders SET status = 'pago' WHERE id = $1 AND status <> 'pago' RETURNING id", [orderId]);
   }
   for (const order of updated) {
-    await query("INSERT INTO admin_notifications (order_id, event_type) VALUES ($1, 'purchase_paid') ON CONFLICT (order_id, event_type) DO NOTHING", [order.id]);
-    await sendAdminPush({ type: 'purchase_paid', orderId: order.id });
   }
   return NextResponse.json({ received: true });
 }

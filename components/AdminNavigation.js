@@ -1,7 +1,6 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
-import AdminNotifications from '@/components/AdminNotifications';
 
 export default function AdminNavigation() {
   const [open, setOpen] = useState(false);
@@ -16,7 +15,6 @@ export default function AdminNavigation() {
         <Link href="/admin/vitrines" onClick={() => setOpen(false)}>Vitrines por linha</Link>
         <Link href="/admin/pedidos" onClick={() => setOpen(false)}>Pedidos</Link>
         <Link href="/admin/configuracoes" onClick={() => setOpen(false)}>Configurações</Link>
-        <AdminNotifications />
         <form action="/api/logout" method="post"><button type="submit" className="link-btn">Sair</button></form>
       </div>
     </div>
