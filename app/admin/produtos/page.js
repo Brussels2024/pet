@@ -17,9 +17,17 @@ export default async function ProdutosPage({ searchParams }) {
   }
 
   const products = await query(
-    `SELECT p.id, p.name, p.sku, p.price, p.stock, p.active, p.image_url, p.priority, c.name AS category
+    `SELECT p.id, p.name, p.sku, p.price, p.stock, p.active, p.image_url, p.priority,
+              COALESCE(
+                (SELECT string_agg(DISTINCT CASE WHEN parent.name IS NOT NULL THEN parent.name || ' › ' || c.name ELSE c.name END, ', ' ORDER BY CASE WHEN parent.name IS NOT NULL THEN parent.name || ' › ' || c.name ELSE c.name END)
+                   FROM product_categories pc
+                   JOIN categories c ON c.id = pc.category_id
+                   LEFT JOIN categories parent ON parent.id = c.parent_id
+                  WHERE pc.product_id = p.id),
+                legacy.name
+              ) AS category
        FROM products p
-       LEFT JOIN categories c ON c.id = p.category_id
+       LEFT JOIN categories legacy ON legacy.id = p.category_id
        ${where}
        ORDER BY p.name
        LIMIT 300`,
