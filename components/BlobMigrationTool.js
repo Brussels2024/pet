@@ -77,7 +77,7 @@ export default function BlobMigrationTool() {
           <ul>
             {data.candidates.map((item, index) => (
               <li key={item ? item.kind + '-' + item.id : 'missing-' + index}>
-                {item ? <><b>{item.label}:</b> {item.name} <span className="muted">(registro {item.id})</span></> : <span className="muted">Não foi encontrado um registro elegível para esta categoria.</span>}
+                {item ? <><b>{item.label}:</b> {item.name} <span className="muted">(registro {item.id})</span>{item.productId ? <span className="muted"> · produto ID {item.productId}</span> : null}</> : <span className="muted">Não foi encontrado um registro elegível para esta categoria.</span>}
               </li>
             ))}
           </ul>
