@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { put } from '@vercel/blob';
-import { getAdminUser } from '@/lib/auth';
+import { cookies } from 'next/headers';
+import { jwtVerify } from 'jose';
 import { revalidatePath } from 'next/cache';
 
 export const runtime = 'nodejs';
@@ -22,12 +23,29 @@ function database() {
   return neon(connectionString);
 }
 
-async function authorizePreview() {
+async function authorizePreview(sql) {
   if (process.env.VERCEL_ENV !== 'preview') return null;
-  const user = await getAdminUser();
-  if (!user || user.role !== 'admin' || user.status !== 'ativo') return null;
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
-  return user;
+  const rawSecret = process.env.AUTH_SECRET || '';
+  if (Buffer.byteLength(rawSecret, 'utf8') < 32) return null;
+
+  try {
+    const store = await cookies();
+    const token = store.get('bp_admin_session')?.value;
+    if (!token) return null;
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(rawSecret), { algorithms: ['HS256'] });
+    if (!Number.isInteger(Number(payload.uid)) || payload.role !== 'admin') return null;
+    const rows = await sql.query(
+      'SELECT id, role, status, session_version FROM users WHERE id = $1 LIMIT 1',
+      [Number(payload.uid)]
+    );
+    const user = rows[0];
+    if (!user || user.role !== 'admin' || user.status !== 'ativo' ||
+        Number(payload.sv) !== Number(user.session_version)) return null;
+    return user;
+  } catch {
+    return null;
+  }
 }
 
 async function getPilotCandidates(sql) {
@@ -208,9 +226,9 @@ async function migrateItems(sql, items) {
 
 export async function GET() {
   try {
-    const user = await authorizePreview();
-    if (!user) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 404 });
     const sql = database();
+    const user = await authorizePreview(sql);
+    if (!user) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 404 });
     const [candidates, batchCandidates, counts] = await Promise.all([
       getPilotCandidates(sql),
       getBatchCandidates(sql),
@@ -236,7 +254,8 @@ export async function POST(request) {
     if (request.headers.get('origin') !== new URL(request.url).origin) {
       return NextResponse.json({ error: 'Origem inválida.' }, { status: 403 });
     }
-    const user = await authorizePreview();
+    const sql = database();
+    const user = await authorizePreview(sql);
     if (!user) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 404 });
 
     const body = await request.json();
@@ -270,7 +289,6 @@ export async function POST(request) {
       }
     }
 
-    const sql = database();
     const result = await migrateItems(sql, items);
     return NextResponse.json(result);
   } catch {
