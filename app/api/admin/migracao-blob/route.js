@@ -133,7 +133,10 @@ async function migrateItems(sql, items) {
         }
         continue;
       }
-      if (item.kind === 'extra' && Number(row.product_id) !== Number(item.productId)) {\n        failed.push({ table: item.table, id: Number(item.id), reason: 'A foto não pertence ao produto aprovado' });\n        continue;\n      }\n      if (item.kind === 'extra' && Number(row.position) <= 1) {
+      if (item.kind === 'extra' && Number(row.product_id) !== Number(item.productId)) {
+        failed.push({ table: item.table, id: Number(item.id), reason: 'A foto não pertence ao produto aprovado' });
+        continue;
+      }\n      if (item.kind === 'extra' && Number(row.position) <= 1) {
         failed.push({ table: item.table, id: Number(item.id), reason: 'A foto selecionada não é uma foto extra' });
         continue;
       }
