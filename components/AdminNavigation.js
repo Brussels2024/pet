@@ -13,6 +13,7 @@ export default function AdminNavigation() {
         <Link href="/admin/produtos" onClick={() => setOpen(false)}>Produtos e estoque</Link>
         <Link href="/admin/banners" onClick={() => setOpen(false)}>Banners</Link>
         <Link href="/admin/vitrines" onClick={() => setOpen(false)}>Vitrines por linha</Link>
+        <Link href="/admin/migracao-blob" onClick={() => setOpen(false)}>Migração de imagens</Link>
         <Link href="/admin/pedidos" onClick={() => setOpen(false)}>Pedidos</Link>
         <Link href="/admin/configuracoes" onClick={() => setOpen(false)}>Configurações</Link>
         <form action="/api/logout" method="post"><button type="submit" className="link-btn">Sair</button></form>
