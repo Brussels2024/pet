@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Os dois comandos permanecem bloqueados até as aprovações correspondentes.
-const PILOT_EXECUTION_ENABLED = false;
+const PILOT_EXECUTION_ENABLED = true;
 const BATCH_EXECUTION_ENABLED = false;
 const BASE64_PATTERN = 'data:image/%;base64,%';
 const PILOT_CONFIRMATION = 'AUTORIZO O PILOTO DE 3 IMAGENS';
@@ -49,68 +49,28 @@ async function authorizePreview(sql) {
 }
 
 async function getPilotCandidates(sql) {
-  const [banners, directProducts, galleryProducts] = await Promise.all([
-    sql.query(
-      'SELECT id, position, title FROM banners WHERE image_url LIKE $1 ORDER BY position, id LIMIT 1',
-      [BASE64_PATTERN]
-    ),
-    sql.query(
-      `SELECT p.id, p.name
-         FROM products p
-        WHERE p.image_url LIKE $1
-          AND NOT EXISTS (SELECT 1 FROM product_images pi WHERE pi.product_id = p.id)
-        ORDER BY p.id
-        LIMIT 1`,
-      [BASE64_PATTERN]
-    ),
+  // IDs conferidos e aprovados pelo usuário: banner 4, produto 171 e foto extra 191.
+  const [banners, products, extras] = await Promise.all([
+    sql.query('SELECT id, position, title FROM banners WHERE id = $1 AND image_url LIKE $2 LIMIT 1', [4, BASE64_PATTERN]),
+    sql.query('SELECT id, name FROM products WHERE id = $1 AND image_url LIKE $2 LIMIT 1', [171, BASE64_PATTERN]),
     sql.query(
       `SELECT pi.id, pi.product_id, pi.position, p.name
          FROM product_images pi
          JOIN products p ON p.id = pi.product_id
-        WHERE pi.image_url LIKE $1 AND pi.position = 1
-        ORDER BY pi.id
+        WHERE pi.id = $1 AND pi.image_url LIKE $2
         LIMIT 1`,
-      [BASE64_PATTERN]
+      [191, BASE64_PATTERN]
     ),
   ]);
 
   const banner = banners[0]
-    ? { kind: 'banner', table: 'banners', id: Number(banners[0].id), label: `Banner ${banners[0].position}`, name: banners[0].title || `Banner ${banners[0].position}` }
+    ? { kind: 'banner', table: 'banners', id: 4, label: 'Banner 1', name: banners[0].title || 'Banner 1' }
     : null;
-
-  let product = null;
-  let productId = null;
-  if (directProducts[0]) {
-    productId = Number(directProducts[0].id);
-    product = { kind: 'product', table: 'products', id: productId, label: 'Imagem principal do produto', name: directProducts[0].name };
-  } else if (galleryProducts[0]) {
-    productId = Number(galleryProducts[0].product_id);
-    product = { kind: 'product', table: 'product_images', id: Number(galleryProducts[0].id), label: 'Imagem principal do produto', name: galleryProducts[0].name };
-  }
-
-  let extras = await sql.query(
-    `SELECT pi.id, pi.product_id, pi.position, p.name
-       FROM product_images pi
-       JOIN products p ON p.id = pi.product_id
-      WHERE pi.image_url LIKE $1 AND pi.position > 1
-        AND ($2::int IS NULL OR pi.product_id <> $2)
-      ORDER BY pi.id
-      LIMIT 1`,
-    [BASE64_PATTERN, productId]
-  );
-  if (!extras.length) {
-    extras = await sql.query(
-      `SELECT pi.id, pi.product_id, pi.position, p.name
-         FROM product_images pi
-         JOIN products p ON p.id = pi.product_id
-        WHERE pi.image_url LIKE $1 AND pi.position > 1
-        ORDER BY pi.id
-        LIMIT 1`,
-      [BASE64_PATTERN]
-    );
-  }
-  const extra = extras[0]
-    ? { kind: 'extra', table: 'product_images', id: Number(extras[0].id), label: `Foto extra (posição ${extras[0].position})`, name: extras[0].name }
+  const product = products[0]
+    ? { kind: 'product', table: 'products', id: 171, label: 'Imagem principal do produto', name: products[0].name }
+    : null;
+  const extra = extras[0] && Number(extras[0].position) > 1
+    ? { kind: 'extra', table: 'product_images', id: 191, label: 'Foto extra', name: extras[0].name }
     : null;
 
   return [banner, product, extra];
