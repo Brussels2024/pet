@@ -49,7 +49,7 @@ async function authorizePreview(sql) {
 }
 
 async function getPilotCandidates(sql) {
-  // IDs conferidos e aprovados pelo usuário: banner 4, produto 171 e foto extra 191.
+  // IDs conferidos no Neon pelo usuário: banner 4, produto 171 (Pneu M Black) e foto 191 do produto 286 (Anêmona).
   const [banners, products, extras] = await Promise.all([
     sql.query('SELECT id, position, title FROM banners WHERE id = $1 AND image_url LIKE $2 LIMIT 1', [4, BASE64_PATTERN]),
     sql.query('SELECT id, name FROM products WHERE id = $1 AND image_url LIKE $2 LIMIT 1', [171, BASE64_PATTERN]),
@@ -70,7 +70,7 @@ async function getPilotCandidates(sql) {
     ? { kind: 'product', table: 'products', id: 171, label: 'Imagem principal do produto', name: products[0].name }
     : null;
   const extra = extras[0] && Number(extras[0].position) > 1
-    ? { kind: 'extra', table: 'product_images', id: 191, label: 'Foto extra', name: extras[0].name }
+    ? { kind: 'extra', table: 'product_images', id: 191, productId: Number(extras[0].product_id), label: 'Foto extra do produto 286', name: extras[0].name }
     : null;
 
   return [banner, product, extra];
@@ -116,7 +116,7 @@ async function migrateItems(sql, items) {
   for (const item of items) {
     try {
       const rows = await sql.query(
-        `SELECT id, image_url${item.table === 'product_images' ? ', position' : ''} FROM ${item.table} WHERE id = $1 LIMIT 1`,
+        `SELECT id, image_url${item.table === 'product_images' ? ', position, product_id' : ''} FROM ${item.table} WHERE id = $1 LIMIT 1`,
         [Number(item.id)]
       );
       const row = rows[0];
@@ -133,7 +133,7 @@ async function migrateItems(sql, items) {
         }
         continue;
       }
-      if (item.kind === 'extra' && Number(row.position) <= 1) {
+      if (item.kind === 'extra' && Number(row.product_id) !== Number(item.productId)) {\n        failed.push({ table: item.table, id: Number(item.id), reason: 'A foto não pertence ao produto aprovado' });\n        continue;\n      }\n      if (item.kind === 'extra' && Number(row.position) <= 1) {
         failed.push({ table: item.table, id: Number(item.id), reason: 'A foto selecionada não é uma foto extra' });
         continue;
       }
@@ -226,11 +226,11 @@ export async function POST(request) {
       const approvedPilot = [
         { kind: 'banner', table: 'banners', id: 4 },
         { kind: 'product', table: 'products', id: 171 },
-        { kind: 'extra', table: 'product_images', id: 191 },
+        { kind: 'extra', table: 'product_images', id: 191, productId: 286 },
       ];
       if (body?.confirmation !== PILOT_CONFIRMATION || items.length !== 3 ||
           approvedPilot.some((approved) => !items.some((item) =>
-            item?.kind === approved.kind && item?.table === approved.table && Number(item?.id) === approved.id
+            item?.kind === approved.kind && item?.table === approved.table && Number(item?.id) === approved.id &&\n            (approved.productId === undefined || Number(item?.productId) === approved.productId)
           ))) {
         return NextResponse.json({ error: 'Confirmação ou seleção do piloto inválida.' }, { status: 400 });
       }
