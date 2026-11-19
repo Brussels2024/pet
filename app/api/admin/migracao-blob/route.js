@@ -57,9 +57,9 @@ async function getPilotCandidates(sql) {
       `SELECT pi.id, pi.product_id, pi.position, p.name
          FROM product_images pi
          JOIN products p ON p.id = pi.product_id
-        WHERE pi.id = $1 AND pi.image_url LIKE $2
+        WHERE pi.id = $1 AND pi.product_id = $3 AND pi.image_url LIKE $2
         LIMIT 1`,
-      [191, BASE64_PATTERN]
+      [191, BASE64_PATTERN, 286]
     ),
   ]);
 
@@ -230,7 +230,8 @@ export async function POST(request) {
       ];
       if (body?.confirmation !== PILOT_CONFIRMATION || items.length !== 3 ||
           approvedPilot.some((approved) => !items.some((item) =>
-            item?.kind === approved.kind && item?.table === approved.table && Number(item?.id) === approved.id &&\n            (approved.productId === undefined || Number(item?.productId) === approved.productId)
+            item?.kind === approved.kind && item?.table === approved.table && Number(item?.id) === approved.id &&
+            (approved.productId === undefined || Number(item?.productId) === approved.productId)
           ))) {
         return NextResponse.json({ error: 'Confirmação ou seleção do piloto inválida.' }, { status: 400 });
       }
