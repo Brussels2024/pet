@@ -223,9 +223,15 @@ export async function POST(request) {
     const items = Array.isArray(body?.items) ? body.items : [];
     if (mode === 'pilot') {
       if (!PILOT_EXECUTION_ENABLED) return NextResponse.json({ error: 'Execução do piloto bloqueada até sua aprovação expressa.' }, { status: 423 });
+      const approvedPilot = [
+        { kind: 'banner', table: 'banners', id: 4 },
+        { kind: 'product', table: 'products', id: 171 },
+        { kind: 'extra', table: 'product_images', id: 191 },
+      ];
       if (body?.confirmation !== PILOT_CONFIRMATION || items.length !== 3 ||
-          new Set(items.map((item) => item?.kind)).size !== 3 ||
-          !['banner', 'product', 'extra'].every((kind) => items.some((item) => item.kind === kind))) {
+          approvedPilot.some((approved) => !items.some((item) =>
+            item?.kind === approved.kind && item?.table === approved.table && Number(item?.id) === approved.id
+          ))) {
         return NextResponse.json({ error: 'Confirmação ou seleção do piloto inválida.' }, { status: 400 });
       }
     } else if (mode === 'batch') {
