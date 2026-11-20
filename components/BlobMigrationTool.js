@@ -46,7 +46,8 @@ export default function BlobMigrationTool() {
     setConfirmation('');
 
     const totals = { migrated: 0, skipped: 0, failed: 0, remaining: data.counts.total, remainingByTable: data.counts.byTable };
-    const allDetails = { migrated: [], skipped: [], failed: [] };\n    let batchesProcessed = 0;
+    const allDetails = { migrated: [], skipped: [], failed: [] };
+    let batchesProcessed = 0;
     setReport({ ...totals, details: allDetails, running: true, batches: 0, stoppedOnError: false });
 
     try {
