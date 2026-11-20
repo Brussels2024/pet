@@ -31,13 +31,21 @@ export async function POST(request) {
   for (const item of wanted) {
     const id = Number(item.id);
     const qty = Math.floor(Number(item.qty));
-    if (id && qty > 0) qtyById.set(id, (qtyById.get(id) || 0) + qty);
+    if (Array.isArray(item.variants) && item.variants.length) {
+      for (const variant of item.variants) {
+        const variantQty = Math.floor(Number(variant.qty));
+        const color = String(variant.color || '').trim();
+        if (!id || !color || variantQty <= 0) return fail('Confira a cor e a quantidade dos produtos.');
+        const nextQty = (qtyById.get(id) || 0) + variantQty;
+        qtyById.set(id, nextQty);
+      }
+    } else if (id && qty > 0) qtyById.set(id, (qtyById.get(id) || 0) + qty);
   }
   if (qtyById.size === 0) return fail('Seu carrinho está vazio.');
 
   const ids = [...qtyById.keys()];
   const products = await query(
-    'SELECT id, name, price, stock, active FROM products WHERE id = ANY($1::int[])',
+    'SELECT id, name, price, stock, active, min_quantity, colors FROM products WHERE id = ANY($1::int[])',
     [ids]
   );
 
@@ -48,9 +56,24 @@ export async function POST(request) {
     const qty = qtyById.get(id);
     if (!p || !p.active) return fail('Um dos produtos do carrinho não está mais disponível.');
     if (qty > p.stock) return fail(`Estoque insuficiente para "${p.name}" (disponível: ${p.stock}).`);
+    const minimum = Math.max(1, Number(p.min_quantity) || 1);
+    if (qty < minimum) return fail(`A quantidade mínima de "${p.name}" é de ${minimum} unidades.`);
     const price = Number(p.price); // sempre o preço do banco, nunca o do navegador
     total += price * qty;
-    lines.push({ id, name: p.name, price, qty });
+    const requestedItem = wanted.find((item) => Number(item.id) === id);
+    if (Array.isArray(requestedItem?.variants) && requestedItem.variants.length) {
+      const colors = Array.isArray(p.colors) ? p.colors : [];
+      for (const variant of requestedItem.variants) {
+        const color = String(variant.color || '').trim();
+        const matched = colors.find((entry) => (typeof entry === 'string' ? entry : String(entry?.name || entry?.color || entry?.cor || '').trim()) === color);
+        if (!matched) return fail(`Escolha uma cor cadastrada para "${p.name}".`);
+        const qtyForColor = Math.floor(Number(variant.qty));
+        if (qtyForColor <= 0) return fail('Quantidade de cor inválida.');
+        lines.push({ id, name: p.name + ' — Cor: ' + color, price, qty: qtyForColor });
+      }
+    } else {
+      lines.push({ id, name: p.name, price, qty });
+    }
   }
 
   const minOrder = Number(await getSetting('min_order', '0')) || 0;
