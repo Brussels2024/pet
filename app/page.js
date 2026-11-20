@@ -4,6 +4,7 @@ import { getUser, canSeePrices } from '@/lib/auth';
 import { brl } from '@/lib/format';
 import CategoryMenu from '@/components/CategoryMenu';
 import AddToCart from '@/components/AddToCart';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,15 +91,7 @@ export default async function Home({ searchParams }) {
                   {showPrice ? (
                     <>
                       <div className="price">{brl(p.price)}</div>
-                      <AddToCart
-                        product={{
-                          id: p.id,
-                          name: p.name,
-                          price: Number(p.price),
-                          stock: Number(p.stock),
-                          image_url: p.image_url,
-                        }}
-                      />
+                      <Link className="btn small" href={`/produto/${encodeURIComponent(String(p.id))}`}>Comprar</Link>
                     </>
                   ) : (
                     <div className="price-locked">Preço visível após cadastro empresarial aprovado</div>
