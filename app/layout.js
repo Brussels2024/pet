@@ -12,10 +12,17 @@ export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({ children }) {
   let whatsapp = '';
+  let instagram = '';
   try {
-    whatsapp = (await getSetting('whatsapp', '')).replace(/\D/g, '');
+    const [whatsappSetting, instagramSetting] = await Promise.all([
+      getSetting('whatsapp', ''),
+      getSetting('instagram', ''),
+    ]);
+    whatsapp = whatsappSetting.replace(/\D/g, '');
+    instagram = instagramSetting.trim().replace(/^@+/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/$/, '');
   } catch {
     whatsapp = '';
+    instagram = '';
   }
 
   return (
@@ -29,6 +36,7 @@ export default async function RootLayout({ children }) {
             </footer>
           }
           whatsapp={whatsapp}
+          instagram={instagram}
         >
           {children}
         </StoreChrome>
