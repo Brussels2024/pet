@@ -261,6 +261,7 @@ export async function saveSettings(formData) {
   await requireAdmin();
   const minOrder = Math.max(0, num(formData, 'min_order')).toFixed(2);
   const whatsapp = text(formData, 'whatsapp').replace(/\D/g, '');
+  const instagram = text(formData, 'instagram').replace(/^@+/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/$/, '').replace(/[^a-zA-Z0-9._]/g, '').slice(0, 30);
   await query(
     `INSERT INTO settings (key, value) VALUES ('min_order', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -270,6 +271,11 @@ export async function saveSettings(formData) {
     `INSERT INTO settings (key, value) VALUES ('whatsapp', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     [whatsapp]
+  );
+  await query(
+    `INSERT INTO settings (key, value) VALUES ('instagram', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [instagram]
   );
   revalidatePath('/admin/configuracoes');
   revalidatePath('/');
