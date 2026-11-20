@@ -8,12 +8,13 @@ import { revalidatePath } from 'next/cache';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Os dois comandos permanecem bloqueados até as aprovações correspondentes.
-const PILOT_EXECUTION_ENABLED = true;
+// Fase atual: somente o primeiro lote aprovado de 5 imagens. Lotes de 25 permanecem bloqueados.
+const PILOT_EXECUTION_ENABLED = false;
+const FIRST_BATCH_EXECUTION_ENABLED = true;
 const BATCH_EXECUTION_ENABLED = false;
 const BASE64_PATTERN = 'data:image/%;base64,%';
-const PILOT_CONFIRMATION = 'AUTORIZO O PILOTO DE 3 IMAGENS';
-const BATCH_CONFIRMATION = 'AUTORIZO O LOTE DE ATÉ 5 IMAGENS';
+const FIRST_BATCH_CONFIRMATION = 'AUTORIZO O PRIMEIRO LOTE DE 5 IMAGENS';
+const BATCH_CONFIRMATION = 'AUTORIZO LOTES DE ATÉ 25 IMAGENS';
 const IMAGE_RE = /^data:image\/(png|jpe?g|webp|gif);base64,([A-Za-z0-9+/=\r\n]+)$/i;
 const TABLES = new Set(['banners', 'products', 'product_images']);
 
@@ -74,6 +75,17 @@ async function getPilotCandidates(sql) {
     : null;
 
   return [banner, product, extra];
+}
+
+async function getFirstBatchCandidates(sql) {
+  const [banners, products] = await Promise.all([
+    sql.query('SELECT id, position, title AS name FROM banners WHERE image_url LIKE $1 ORDER BY id LIMIT 2', [BASE64_PATTERN]),
+    sql.query('SELECT id, name FROM products WHERE image_url LIKE $1 ORDER BY id LIMIT 3', [BASE64_PATTERN]),
+  ]);
+  return [
+    ...banners.map((row) => ({ kind: 'first_batch', table: 'banners', id: Number(row.id), label: `Banner ${row.position}`, name: row.name || `Banner ${row.position}` })),
+    ...products.map((row) => ({ kind: 'first_batch', table: 'products', id: Number(row.id), label: 'Imagem principal', name: row.name })),
+  ];
 }
 
 async function getBatchCandidates(sql) {
@@ -193,8 +205,8 @@ export async function GET() {
     const sql = database();
     const user = await authorizePreview(sql);
     if (!user) return NextResponse.json({ error: 'Acesso não autorizado.' }, { status: 404 });
-    const [candidates, batchCandidates, counts] = await Promise.all([
-      getPilotCandidates(sql),
+    const [firstBatchCandidates, batchCandidates, counts] = await Promise.all([
+      getFirstBatchCandidates(sql),
       getBatchCandidates(sql),
       getCounts(sql),
     ]);
@@ -202,11 +214,12 @@ export async function GET() {
       environment: 'preview',
       store: 'pet-product-images',
       executionEnabled: PILOT_EXECUTION_ENABLED,
+      firstBatchExecutionEnabled: FIRST_BATCH_EXECUTION_ENABLED,
       batchExecutionEnabled: BATCH_EXECUTION_ENABLED,
-      candidates,
+      firstBatchCandidates,
       batchCandidates,
       counts,
-      ready: candidates.every(Boolean),
+      firstBatchReady: firstBatchCandidates.length === 5 && firstBatchCandidates.filter((item) => item.table === 'banners').length === 2 && firstBatchCandidates.filter((item) => item.table === 'products').length === 3,
     });
   } catch {
     return NextResponse.json({ error: 'Não foi possível consultar os candidatos da migração.' }, { status: 500 });
@@ -239,9 +252,21 @@ export async function POST(request) {
           ))) {
         return NextResponse.json({ error: 'Confirmação ou seleção do piloto inválida.' }, { status: 400 });
       }
+    } else if (mode === 'first_batch') {
+      if (!FIRST_BATCH_EXECUTION_ENABLED) return NextResponse.json({ error: 'O primeiro lote está bloqueado.' }, { status: 423 });
+      const expected = await getFirstBatchCandidates(sql);
+      const submitted = items.map((item) => `${item?.table}:${Number(item?.id)}`).sort();
+      const approved = expected.map((item) => `${item.table}:${item.id}`).sort();
+      if (body?.confirmation !== FIRST_BATCH_CONFIRMATION || items.length !== 5 ||
+          items.some((item) => item?.kind !== 'first_batch') ||
+          JSON.stringify(submitted) !== JSON.stringify(approved) ||
+          expected.filter((item) => item.table === 'banners').length !== 2 ||
+          expected.filter((item) => item.table === 'products').length !== 3) {
+        return NextResponse.json({ error: 'O primeiro lote deve conter exatamente os 2 banners e 3 produtos apresentados na conferência.' }, { status: 400 });
+      }
     } else if (mode === 'batch') {
-      if (!BATCH_EXECUTION_ENABLED) return NextResponse.json({ error: 'Os lotes seguintes serão liberados somente após a validação do piloto.' }, { status: 423 });
-      if (body?.confirmation !== BATCH_CONFIRMATION || items.length < 1 || items.length > 5 ||
+      if (!BATCH_EXECUTION_ENABLED) return NextResponse.json({ error: 'Os lotes de 25 imagens serão liberados somente após sua conferência do primeiro lote.' }, { status: 423 });
+      if (body?.confirmation !== BATCH_CONFIRMATION || items.length < 1 || items.length > 25 ||
           items.some((item) => item?.kind !== 'batch')) {
         return NextResponse.json({ error: 'Confirmação ou seleção do lote inválida.' }, { status: 400 });
       }
