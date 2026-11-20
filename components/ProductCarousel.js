@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { brl } from '@/lib/format';
-import AddToCart from '@/components/AddToCart';
 
 function shuffle(items) {
   const copy = [...items];
@@ -50,40 +49,34 @@ export function ProductRail({ title, subtitle, products, showPrice, randomize = 
       </div>
       <div className="products showcase-products">
         {visibleProducts.map((p) => (
-          <article className="product" key={p.id}>
+          <article className="product product-clickable" key={p.id}>
             <Link
-              className="product-main-link"
-              style={{ display: 'block', color: 'inherit' }}
+              className="product-detail-link"
               href={`/produto/${encodeURIComponent(String(p.id))}`}
-              aria-label={'Ver detalhes de ' + p.name}
-              title={'Ver detalhes de ' + p.name}
-            >
-              <div className="photo">
-                {p.image_url ? <img src={p.image_url} alt={p.name} loading="lazy" /> : 'Sem foto'}
-              </div>
-              <div className="info">
-                <div className="name">{p.name}</div>
-                {p.sku && <div className="sku">Cód. {p.sku}</div>}
-              </div>
-            </Link>
-            <div className="info product-purchase-info">
-              {showPrice ? (
-                <>
-                  <div className="price">{brl(p.price)}</div>
-                  <AddToCart
-                    product={{
-                      id: p.id,
-                      name: p.name,
-                      price: Number(p.price),
-                      stock: Number(p.stock),
-                      image_url: p.image_url,
-                    }}
-                  />
-                </>
-              ) : (
-                <div className="price-locked">Preço visível após cadastro empresarial aprovado</div>
-              )}
+              aria-label={'Ver anúncio de ' + p.name}
+              title={'Ver anúncio de ' + p.name}
+            />
+            <div className="photo">
+              {p.image_url ? <img src={p.image_url} alt={p.name} loading="lazy" /> : 'Sem foto'}
             </div>
+            <div className="info">
+              <div className="name">{p.name}</div>
+              {p.sku && <div className="sku">Cód. {p.sku}</div>}
+              {showPrice
+                ? <div className="price">{brl(p.price)}</div>
+                : <div className="price-locked">Preço visível após cadastro empresarial aprovado</div>}
+            </div>
+            {showPrice && (
+              <div className="info product-purchase-info">
+                <Link
+                  className="btn small"
+                  href={`/produto/${encodeURIComponent(String(p.id))}`}
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  Comprar
+                </Link>
+              </div>
+            )}
           </article>
         ))}
       </div>
