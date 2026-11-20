@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 const BATCH_EXECUTION_ENABLED = true;
 const BASE64_PATTERN = 'data:image/%;base64,%';
 const BATCH_CONFIRMATION = 'AUTORIZO LOTES DE ATÉ 25 IMAGENS';
-const IMAGE_RE = /^data:image\\/(png|jpe?g|webp|gif);base64,([A-Za-z0-9+/=\\r\\n]+)$/i;
+const IMAGE_RE = /^data:image\/(png|jpe?g|webp|gif);base64,([A-Za-z0-9+/=\r\n]+)$/i;
 const TABLES = new Set(['banners', 'products', 'product_images']);
 
 function database() {
@@ -107,7 +107,7 @@ async function migrateItems(sql, items) {
         stoppedOnError = true;
         break;
       }
-      const bytes = Buffer.from(match[2].replace(/\\s/g, ''), 'base64');
+      const bytes = Buffer.from(match[2].replace(/\s/g, ''), 'base64');
       if (!bytes.length || bytes.length > 8 * 1024 * 1024) {
         failed.push({ table: item.table, id: Number(item.id), reason: 'Arquivo vazio ou acima de 8 MB' });
         stoppedOnError = true;
