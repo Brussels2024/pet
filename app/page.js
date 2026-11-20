@@ -92,6 +92,7 @@ export default async function Home({ searchParams }) {
                     <div className="price-locked">Preço visível após cadastro empresarial aprovado</div>
                   )}
                   <Link className="btn small" href={`/produto/${encodeURIComponent(String(p.id))}`}>Comprar</Link>
+                  <Link className="btn small" href={`/produto/${encodeURIComponent(String(p.id))}`}>Comprar</Link>
                 </div>
               </article>
             ))}
