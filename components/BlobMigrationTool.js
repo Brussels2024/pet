@@ -46,7 +46,7 @@ export default function BlobMigrationTool() {
     setConfirmation('');
 
     const totals = { migrated: 0, skipped: 0, failed: 0, remaining: data.counts.total, remainingByTable: data.counts.byTable };
-    const allDetails = { migrated: [], skipped: [], failed: [] };
+    const allDetails = { migrated: [], skipped: [], failed: [] };\n    let batchesProcessed = 0;
     setReport({ ...totals, details: allDetails, running: true, batches: 0, stoppedOnError: false });
 
     try {
@@ -82,12 +82,12 @@ export default function BlobMigrationTool() {
         allDetails.migrated.push(...(result.details?.migrated || []));
         allDetails.skipped.push(...(result.details?.skipped || []));
         allDetails.failed.push(...(result.details?.failed || []));
-        const batches = (report?.batches || 0) + 1;
+        batchesProcessed += 1;
         setReport({
           ...totals,
           details: { ...allDetails },
           running: true,
-          batches,
+          batches: batchesProcessed,
           stoppedOnError: Boolean(result.stoppedOnError),
         });
 
@@ -109,7 +109,7 @@ export default function BlobMigrationTool() {
         ...totals,
         details: { ...allDetails },
         running: false,
-        batches: report?.batches || Math.ceil(totals.migrated / 25),
+        batches: batchesProcessed,
         stoppedOnError: totals.failed > 0,
         completed: totals.remaining === 0 && totals.failed === 0,
       });
