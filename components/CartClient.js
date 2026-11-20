@@ -9,6 +9,7 @@ export default function CartClient({ minOrder, status }) {
   const [cart, setCart] = useState([]);
   const [ready, setReady] = useState(false);
   const [notes, setNotes] = useState('');
+  const [payment, setPayment] = useState('pix');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -85,6 +86,7 @@ export default function CartClient({ minOrder, status }) {
               ? { variants: item.variants.map((variant) => ({ color: variant.color, qty: variant.qty })) }
               : {}),
           })),
+          payment,
           notes,
         }),
       });
@@ -159,6 +161,14 @@ export default function CartClient({ minOrder, status }) {
           Pedido mínimo: {brl(minOrder)}. <b>Frete grátis.</b>
         </p>
         {belowMin && <div className="msg warn">Faltam {brl(minOrder - total)} para atingir o pedido mínimo.</div>}
+        <div className="field">
+          <label htmlFor="pay">Forma de pagamento</label>
+          <select id="pay" value={payment} onChange={(event) => setPayment(event.target.value)}>
+            <option value="pix">Pix</option>
+            <option value="boleto">Boleto</option>
+            <option value="cartao">Cartão</option>
+          </select>
+        </div>
         <div className="field">
           <label htmlFor="notes">Observações</label>
           <textarea id="notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
