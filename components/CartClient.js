@@ -14,11 +14,6 @@ export default function CartClient({ minOrder, status }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (status === 'guest') {
-      setCart([]);
-      setReady(true);
-      return;
-    }
     try {
       setCart(JSON.parse(localStorage.getItem('bp_cart') || '[]'));
     } catch {
@@ -106,7 +101,7 @@ export default function CartClient({ minOrder, status }) {
   }
 
   if (!ready) return null;
-  if (status === 'guest' || cart.length === 0) {
+  if (cart.length === 0) {
     return (
       <p>
         Seu carrinho está vazio. <Link href="/"><b>Ver produtos</b></Link>
@@ -173,6 +168,7 @@ export default function CartClient({ minOrder, status }) {
           <label htmlFor="notes">Observações</label>
           <textarea id="notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
         </div>
+        {status === 'guest' && <div className="msg warn"><Link href="/entrar?next=/carrinho"><b>Entre</b></Link> ou <Link href="/cadastro"><b>cadastre sua empresa</b></Link> para finalizar.</div>}
         {status === 'pendente' && <div className="msg warn">Sua conta ainda está em análise. Você poderá comprar assim que for aprovada.</div>}
         {status === 'bloqueado' && <div className="msg error">Conta bloqueada. Fale com a Brussels Pet.</div>}
         {error && <div className="msg error">{error}</div>}
