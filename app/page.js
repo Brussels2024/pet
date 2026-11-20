@@ -3,7 +3,6 @@ import { query } from '@/lib/db';
 import { getUser, canSeePrices } from '@/lib/auth';
 import { brl } from '@/lib/format';
 import CategoryMenu from '@/components/CategoryMenu';
-import AddToCart from '@/components/AddToCart';
 
 export const dynamic = 'force-dynamic';
 
