@@ -25,6 +25,11 @@ export default function AddToCart({ product }) {
   const [error, setError] = useState('');
   const soldOut = Number(product.stock) <= 0;
   const selectedTotal = Object.values(quantities).reduce((sum, value) => sum + Math.max(0, Math.floor(Number(value) || 0)), 0);
+  const canBuy = !soldOut && (
+    colors.length
+      ? selectedTotal >= minimum && selectedTotal <= Number(product.stock)
+      : Math.floor(Number(qty) || 0) >= minimum && Math.floor(Number(qty) || 0) <= Number(product.stock)
+  );
 
   function add() {
     const cartQty = colors.length ? selectedTotal : Math.max(minimum, Math.floor(Number(qty) || minimum));
@@ -103,7 +108,7 @@ export default function AddToCart({ product }) {
       window.dispatchEvent(new Event('cart-changed'));
       setError('');
       setAdded(true);
-      window.setTimeout(() => setAdded(false), 1500);
+      window.location.href = '/carrinho';
     } catch {
       setError('Não foi possível adicionar o produto. Tente novamente.');
     }
@@ -152,8 +157,8 @@ export default function AddToCart({ product }) {
         </label>
       )}
       {error && <p className="msg error">{error}</p>}
-      <button type="button" className="btn small" onClick={add}>
-        {added ? 'Adicionado ✓' : 'Adicionar'}
+      <button type="button" className="btn small" onClick={add} disabled={!canBuy}>
+        {added ? 'Indo para o carrinho…' : 'Comprar agora'}
       </button>
     </div>
   );
