@@ -8,38 +8,67 @@ const brl = (n) => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency',
 export default function CartClient({ minOrder, status }) {
   const [cart, setCart] = useState([]);
   const [ready, setReady] = useState(false);
-  const [payment, setPayment] = useState('pix');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (status === 'guest') {
+      setCart([]);
+      setReady(true);
+      return;
+    }
     try {
       setCart(JSON.parse(localStorage.getItem('bp_cart') || '[]'));
     } catch {
       setCart([]);
     }
     setReady(true);
-  }, []);
+  }, [status]);
 
   function save(next) {
     setCart(next);
     try {
       localStorage.setItem('bp_cart', JSON.stringify(next));
       window.dispatchEvent(new Event('cart-changed'));
-    } catch {
-      // sem localStorage
-    }
+    } catch {}
   }
 
-  const changeQty = (id, value) => {
+  function changeQty(id, value) {
     const qty = Math.max(1, Math.floor(Number(value) || 1));
-    save(cart.map((i) => (i.id === id ? { ...i, qty } : i)));
-  };
-  const remove = (id) => save(cart.filter((i) => i.id !== id));
+    save(cart.map((item) => item.id === id ? { ...item, qty } : item));
+  }
 
-  const total = cart.reduce((sum, i) => sum + Number(i.price) * i.qty, 0);
+  function changeVariantQty(id, color, value) {
+    const qty = Math.max(1, Math.floor(Number(value) || 1));
+    save(cart.map((item) => {
+      if (item.id !== id || !Array.isArray(item.variants)) return item;
+      const variants = item.variants.map((variant) => variant.color === color ? { ...variant, qty } : variant);
+      return { ...item, variants, qty: variants.reduce((sum, variant) => sum + Number(variant.qty || 0), 0) };
+    }));
+  }
+
+  function remove(id) {
+    save(cart.filter((item) => item.id !== id));
+  }
+
+  function removeVariant(id, color) {
+    const next = cart.flatMap((item) => {
+      if (item.id !== id || !Array.isArray(item.variants)) return [item];
+      const variants = item.variants.filter((variant) => variant.color !== color);
+      if (!variants.length) return [];
+      return [{ ...item, variants, qty: variants.reduce((sum, variant) => sum + Number(variant.qty || 0), 0) }];
+    });
+    save(next);
+  }
+
+  const total = cart.reduce((sum, item) => sum + Number(item.price) * Number(item.qty), 0);
   const belowMin = total < minOrder;
+  const rows = cart.flatMap((item) => (
+    Array.isArray(item.variants) && item.variants.length
+      ? item.variants.map((variant) => ({ ...item, variant, rowKey: String(item.id) + '-' + variant.color }))
+      : [{ ...item, variant: null, rowKey: String(item.id) }]
+  ));
 
   async function finish() {
     setError('');
@@ -49,8 +78,13 @@ export default function CartClient({ minOrder, status }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: cart.map((i) => ({ id: i.id, qty: i.qty })),
-          payment,
+          items: cart.map((item) => ({
+            id: item.id,
+            qty: item.qty,
+            ...(Array.isArray(item.variants) && item.variants.length
+              ? { variants: item.variants.map((variant) => ({ color: variant.color, qty: variant.qty })) }
+              : {}),
+          })),
           notes,
         }),
       });
@@ -62,7 +96,7 @@ export default function CartClient({ minOrder, status }) {
       }
       localStorage.removeItem('bp_cart');
       window.dispatchEvent(new Event('cart-changed'));
-      window.location.href = `/conta?pedido=${data.orderId}`;
+      window.location.href = data.paymentUrl || `/conta?pedido=${data.orderId}`;
     } catch {
       setError('Erro de conexão. Tente novamente.');
       setBusy(false);
@@ -70,7 +104,7 @@ export default function CartClient({ minOrder, status }) {
   }
 
   if (!ready) return null;
-  if (cart.length === 0) {
+  if (status === 'guest' || cart.length === 0) {
     return (
       <p>
         Seu carrinho está vazio. <Link href="/"><b>Ver produtos</b></Link>
@@ -83,79 +117,57 @@ export default function CartClient({ minOrder, status }) {
       <div className="table-wrap">
         <table>
           <thead>
-            <tr>
-              <th>Produto</th>
-              <th>Preço</th>
-              <th>Qtd.</th>
-              <th>Subtotal</th>
-              <th></th>
-            </tr>
+            <tr><th>Produto</th><th>Preço</th><th>Qtd.</th><th>Subtotal</th><th></th></tr>
           </thead>
           <tbody>
-            {cart.map((i) => (
-              <tr key={i.id}>
-                <td>{i.name}</td>
-                <td>{brl(i.price)}</td>
-                <td style={{ width: 100 }}>
-                  <input type="number" min="1" value={i.qty} onChange={(e) => changeQty(i.id, e.target.value)} />
-                </td>
-                <td>{brl(Number(i.price) * i.qty)}</td>
-                <td>
-                  <button type="button" className="btn small outline" onClick={() => remove(i.id)}>
-                    Remover
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {rows.map((item) => {
+              const variant = item.variant;
+              const lineQty = variant ? Number(variant.qty) : Number(item.qty);
+              return (
+                <tr key={item.rowKey}>
+                  <td>
+                    <b>{item.name}</b>
+                    {variant && <div className="muted">Cor: {variant.color}{variant.colorSku ? ' · SKU: ' + variant.colorSku : ''}</div>}
+                  </td>
+                  <td>{brl(item.price)}</td>
+                  <td style={{ width: 100 }}>
+                    <input
+                      type="number"
+                      min="1"
+                      value={lineQty}
+                      onChange={(event) => variant
+                        ? changeVariantQty(item.id, variant.color, event.target.value)
+                        : changeQty(item.id, event.target.value)}
+                    />
+                  </td>
+                  <td>{brl(Number(item.price) * lineQty)}</td>
+                  <td>
+                    <button type="button" className="btn small outline" onClick={() => variant ? removeVariant(item.id, variant.color) : remove(item.id)}>
+                      Remover
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <p style={{ fontSize: 20, margin: '0 0 8px' }}>
-          Total: <b>{brl(total)}</b>
-        </p>
+        <p style={{ fontSize: 20, margin: '0 0 8px' }}>Total: <b>{brl(total)}</b></p>
         <p className="muted" style={{ marginTop: 0 }}>
-          Pedido mínimo: {brl(minOrder)}. O frete é combinado após a confirmação do pedido.
+          Pedido mínimo: {brl(minOrder)}. <b>Frete grátis.</b>
         </p>
-        {belowMin && (
-          <div className="msg warn">
-            Faltam {brl(minOrder - total)} para atingir o pedido mínimo.
-          </div>
-        )}
-
-        <div className="field">
-          <label htmlFor="pay">Forma de pagamento</label>
-          <select id="pay" value={payment} onChange={(e) => setPayment(e.target.value)}>
-            <option value="pix">Pix</option>
-            <option value="boleto">Boleto</option>
-            <option value="cartao">Cartão</option>
-          </select>
-        </div>
+        {belowMin && <div className="msg warn">Faltam {brl(minOrder - total)} para atingir o pedido mínimo.</div>}
         <div className="field">
           <label htmlFor="notes">Observações</label>
-          <textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <textarea id="notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
         </div>
-
-        {status === 'guest' && (
-          <div className="msg warn">
-            <Link href="/entrar?next=/carrinho"><b>Entre</b></Link> ou <Link href="/cadastro"><b>cadastre sua empresa</b></Link> para finalizar.
-          </div>
-        )}
-        {status === 'pendente' && (
-          <div className="msg warn">Sua conta ainda está em análise. Você poderá comprar assim que for aprovada.</div>
-        )}
+        {status === 'pendente' && <div className="msg warn">Sua conta ainda está em análise. Você poderá comprar assim que for aprovada.</div>}
         {status === 'bloqueado' && <div className="msg error">Conta bloqueada. Fale com a Brussels Pet.</div>}
         {error && <div className="msg error">{error}</div>}
-
-        <button
-          type="button"
-          className="btn"
-          onClick={finish}
-          disabled={busy || belowMin || status !== 'ok'}
-          style={{ width: '100%' }}
-        >
-          {busy ? 'Enviando...' : 'Finalizar pedido'}
+        <button type="button" className="btn" onClick={finish} disabled={busy || belowMin || status !== 'ok'} style={{ width: '100%' }}>
+          {busy ? 'Enviando para o Asaas...' : 'Finalizar pedido'}
         </button>
       </div>
     </>
