@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
-const PILOT_CONFIRMATION = 'AUTORIZO O PILOTO DE 3 IMAGENS';
-const BATCH_CONFIRMATION = 'AUTORIZO O LOTE DE ATÉ 5 IMAGENS';
+const FIRST_BATCH_CONFIRMATION = 'AUTORIZO O PRIMEIRO LOTE DE 5 IMAGENS';
+const BATCH_CONFIRMATION = 'AUTORIZO LOTES DE ATÉ 25 IMAGENS';
 
 export default function BlobMigrationTool() {
   const [data, setData] = useState(null);
@@ -31,10 +31,10 @@ export default function BlobMigrationTool() {
   useEffect(() => { refresh(); }, []);
 
   async function run(mode) {
-    const isPilot = mode === 'pilot';
-    const expected = isPilot ? PILOT_CONFIRMATION : BATCH_CONFIRMATION;
-    const enabled = isPilot ? data?.executionEnabled : data?.batchExecutionEnabled;
-    const items = isPilot ? data?.candidates : data?.batchCandidates;
+    const isFirstBatch = mode === 'first_batch';
+    const expected = isFirstBatch ? FIRST_BATCH_CONFIRMATION : BATCH_CONFIRMATION;
+    const enabled = isFirstBatch ? data?.firstBatchExecutionEnabled : data?.batchExecutionEnabled;
+    const items = isFirstBatch ? data?.firstBatchCandidates : data?.batchCandidates;
     if (!enabled || confirmation !== expected || !items?.length || running) return;
 
     setRunning(true);
@@ -73,30 +73,28 @@ export default function BlobMigrationTool() {
             <div className="stat"><b>{data.counts.byTable.product_images}</b>Fotos adicionais</div>
           </div>
 
-          <h3>1. Três registros previstos para o piloto</h3>
+          <h3>Primeiro lote autorizado: 2 banners restantes + 3 produtos</h3>
           <ul>
-            {data.candidates.map((item, index) => (
-              <li key={item ? item.kind + '-' + item.id : 'missing-' + index}>
-                {item ? <><b>{item.label}:</b> {item.name} <span className="muted">(registro {item.id})</span>{item.productId ? <span className="muted"> · produto ID {item.productId}</span> : null}</> : <span className="muted">Não foi encontrado um registro elegível para esta categoria.</span>}
+            {data.firstBatchCandidates.map((item) => (
+              <li key={item.table + '-' + item.id}>
+                <b>{item.label}:</b> {item.name} <span className="muted">(registro {item.id})</span>
               </li>
             ))}
           </ul>
-          {!data.ready && <p className="msg warn">O piloto ainda não está completo: falta encontrar um dos três tipos de imagem.</p>}
-          {!data.executionEnabled ? (
-            <p className="msg warn" style={{ marginTop: 16 }}>
-              O piloto está bloqueado até sua aprovação expressa. Esta tela apenas consulta nomes e contagens; nenhuma imagem foi enviada ou alterada.
-            </p>
+          {!data.firstBatchReady && <p className="msg warn">Não foi possível montar exatamente 2 banners e 3 produtos. Nenhuma imagem será enviada.</p>}
+          {!data.firstBatchExecutionEnabled ? (
+            <p className="msg warn" style={{ marginTop: 16 }}>O primeiro lote está bloqueado.</p>
           ) : (
             <div style={{ marginTop: 16 }}>
-              <label htmlFor="blob-pilot-confirm">Para executar, digite: {PILOT_CONFIRMATION}</label>
-              <input id="blob-pilot-confirm" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" />
-              <button className="btn" type="button" disabled={!data.ready || confirmation !== PILOT_CONFIRMATION || running} onClick={() => run('pilot')}>
-                {running ? 'Migrando...' : 'Executar piloto de 3 imagens'}
+              <label htmlFor="blob-first-batch-confirm">Para executar, digite: {FIRST_BATCH_CONFIRMATION}</label>
+              <input id="blob-first-batch-confirm" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" />
+              <button className="btn" type="button" disabled={!data.firstBatchReady || confirmation !== FIRST_BATCH_CONFIRMATION || running} onClick={() => run('first_batch')}>
+                {running ? 'Migrando...' : 'Executar primeiro lote de 5 imagens'}
               </button>
             </div>
           )}
 
-          <h3 style={{ marginTop: 26 }}>2. Próximos lotes (até 5 imagens por vez)</h3>
+          <h3 style={{ marginTop: 26 }}>Lotes seguintes (até 25 imagens por vez)</h3>
           {data.batchCandidates.length ? (
             <ul>
               {data.batchCandidates.map((item) => (
@@ -107,13 +105,13 @@ export default function BlobMigrationTool() {
             </ul>
           ) : <p className="muted">Não há imagens base64 restantes para os próximos lotes.</p>}
           {!data.batchExecutionEnabled ? (
-            <p className="msg warn">Os lotes seguintes só serão liberados depois que você conferir o piloto e autorizar a continuação.</p>
+            <p className="msg warn">Os lotes de 25 imagens serão liberados somente depois que você conferir os 2 banners e os 3 produtos deste primeiro lote.</p>
           ) : (
             <div style={{ marginTop: 16 }}>
               <label htmlFor="blob-batch-confirm">Para executar, digite: {BATCH_CONFIRMATION}</label>
               <input id="blob-batch-confirm" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" />
               <button className="btn" type="button" disabled={!data.batchCandidates.length || confirmation !== BATCH_CONFIRMATION || running} onClick={() => run('batch')}>
-                {running ? 'Migrando...' : 'Executar próximo lote'}
+                {running ? 'Migrando...' : 'Executar sequência de lotes de 25'}
               </button>
             </div>
           )}
