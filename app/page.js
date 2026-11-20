@@ -4,7 +4,6 @@ import { getUser, canSeePrices } from '@/lib/auth';
 import { brl } from '@/lib/format';
 import CategoryMenu from '@/components/CategoryMenu';
 import AddToCart from '@/components/AddToCart';
-import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
