@@ -87,13 +87,11 @@ export default async function Home({ searchParams }) {
                   <div className="name">{p.name}</div>
                   {p.sku && <div className="sku">Cód. {p.sku}</div>}
                   {showPrice ? (
-                    <>
-                      <div className="price">{brl(p.price)}</div>
-                      <Link className="btn small" href={`/produto/${encodeURIComponent(String(p.id))}`}>Comprar</Link>
-                    </>
+                    <div className="price">{brl(p.price)}</div>
                   ) : (
                     <div className="price-locked">Preço visível após cadastro empresarial aprovado</div>
                   )}
+                  <Link className="btn small" href={`/produto/${encodeURIComponent(String(p.id))}`}>Comprar</Link>
                 </div>
               </article>
             ))}
