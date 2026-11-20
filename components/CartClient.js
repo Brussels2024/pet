@@ -9,11 +9,15 @@ export default function CartClient({ minOrder, status }) {
   const [cart, setCart] = useState([]);
   const [ready, setReady] = useState(false);
   const [notes, setNotes] = useState('');
-  const [payment, setPayment] = useState('pix');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (status === 'guest') {
+      setCart([]);
+      setReady(true);
+      return;
+    }
     try {
       setCart(JSON.parse(localStorage.getItem('bp_cart') || '[]'));
     } catch {
@@ -81,7 +85,6 @@ export default function CartClient({ minOrder, status }) {
               ? { variants: item.variants.map((variant) => ({ color: variant.color, qty: variant.qty })) }
               : {}),
           })),
-          payment,
           notes,
         }),
       });
@@ -101,7 +104,7 @@ export default function CartClient({ minOrder, status }) {
   }
 
   if (!ready) return null;
-  if (cart.length === 0) {
+  if (status === 'guest' || cart.length === 0) {
     return (
       <p>
         Seu carrinho está vazio. <Link href="/"><b>Ver produtos</b></Link>
@@ -153,22 +156,13 @@ export default function CartClient({ minOrder, status }) {
       <div className="card" style={{ marginTop: 16 }}>
         <p style={{ fontSize: 20, margin: '0 0 8px' }}>Total: <b>{brl(total)}</b></p>
         <p className="muted" style={{ marginTop: 0 }}>
-          Pedido mínimo: {brl(minOrder)}. <b>Frete grátis.</b>
+          Pedido mínimo: {brl(minOrder)}. Frete grátis.
         </p>
         {belowMin && <div className="msg warn">Faltam {brl(minOrder - total)} para atingir o pedido mínimo.</div>}
-        <div className="field">
-          <label htmlFor="pay">Forma de pagamento</label>
-          <select id="pay" value={payment} onChange={(event) => setPayment(event.target.value)}>
-            <option value="pix">Pix</option>
-            <option value="boleto">Boleto</option>
-            <option value="cartao">Cartão</option>
-          </select>
-        </div>
         <div className="field">
           <label htmlFor="notes">Observações</label>
           <textarea id="notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
         </div>
-        {status === 'guest' && <div className="msg warn"><Link href="/entrar?next=/carrinho"><b>Entre</b></Link> ou <Link href="/cadastro"><b>cadastre sua empresa</b></Link> para finalizar.</div>}
         {status === 'pendente' && <div className="msg warn">Sua conta ainda está em análise. Você poderá comprar assim que for aprovada.</div>}
         {status === 'bloqueado' && <div className="msg error">Conta bloqueada. Fale com a Brussels Pet.</div>}
         {error && <div className="msg error">{error}</div>}
