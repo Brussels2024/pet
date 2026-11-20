@@ -61,6 +61,10 @@ export async function POST(request) {
     const price = Number(p.price); // sempre o preço do banco, nunca o do navegador
     total += price * qty;
     const requestedItem = wanted.find((item) => Number(item.id) === id);
+    const registeredColors = Array.isArray(p.colors) ? p.colors : [];
+    if (registeredColors.length && (!Array.isArray(requestedItem?.variants) || !requestedItem.variants.length)) {
+      return fail(`Selecione as cores cadastradas para "${p.name}".`);
+    }
     if (Array.isArray(requestedItem?.variants) && requestedItem.variants.length) {
       const colors = Array.isArray(p.colors) ? p.colors : [];
       for (const variant of requestedItem.variants) {
