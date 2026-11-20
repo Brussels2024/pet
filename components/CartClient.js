@@ -156,7 +156,7 @@ export default function CartClient({ minOrder, status }) {
       <div className="card" style={{ marginTop: 16 }}>
         <p style={{ fontSize: 20, margin: '0 0 8px' }}>Total: <b>{brl(total)}</b></p>
         <p className="muted" style={{ marginTop: 0 }}>
-          Pedido mínimo: {brl(minOrder)}. Frete grátis.
+          Pedido mínimo: {brl(minOrder)}. O frete é combinado após a confirmação do pedido.
         </p>
         {belowMin && <div className="msg warn">Faltam {brl(minOrder - total)} para atingir o pedido mínimo.</div>}
         <div className="field">
