@@ -152,7 +152,7 @@ export async function GET() {
       const name = clean(product.name) || 'Produto';
       const nameLines = [];
       let remaining = name;
-      while (remaining.length && nameLines.length < 3) {
+      while (remaining.length && nameLines.length < 2) {
         let cut = remaining.length;
         while (cut > 1 && bold.widthOfTextAtSize(remaining.slice(0, cut), 10) > textWidth) cut--;
         if (cut < remaining.length) {
