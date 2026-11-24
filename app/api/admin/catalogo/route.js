@@ -27,6 +27,14 @@ function pdfSafe(value) {
     .replace(/[^\x20-\x7E]/g, '?');
 }
 
+function drawText(page, value, options) {
+  drawText(page, pdfSafe(value), options);
+}
+
+function measureText(font, value, size) {
+  return font.widthOfTextAtSize(pdfSafe(value), size);
+}
+
 function formatPrice(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
 }
@@ -48,23 +56,23 @@ async function embedProductImage(pdf, imageUrl) {
       if (!match) return null;
       bytes = Buffer.from(match[2], 'base64');
     } else if (/^https:\/\//i.test(imageUrl)) {
-      const response = await fetch(imageUrl, { signal: AbortSignal.timeout(5000) });
+      const response = await fetch(imageUrl, { signal: AbortSignal.timeout(2500) });
       if (!response.ok) return null;
       const type = (response.headers.get('content-type') || '').toLowerCase();
       if (!type.startsWith('image/')) return null;
       const length = Number(response.headers.get('content-length') || 0);
-      if (length > 8 * 1024 * 1024) return null;
+      if (length > 4 * 1024 * 1024) return null;
       bytes = Buffer.from(await response.arrayBuffer());
     } else {
       return null;
     }
-    if (!bytes.length || bytes.length > 8 * 1024 * 1024) return null;
+    if (!bytes.length || bytes.length > 4 * 1024 * 1024) return null;
 
     // Padroniza as fotos em JPEG pequeno para evitar PDFs gigantes e estouro de memória.
-    const optimized = await sharp(bytes, { limitInputPixels: 40000000 })
+    const optimized = await sharp(bytes, { limitInputPixels: 16000000 })
       .rotate()
-      .resize(420, 420, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 62, mozjpeg: true })
+      .resize(260, 260, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 48, mozjpeg: true })
       .toBuffer();
     return await pdf.embedJpg(optimized);
   } catch {
@@ -110,13 +118,13 @@ export async function GET() {
   const totalPages = Math.ceil(products.length / (COLUMNS * ROWS));
   for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
     const page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    page.drawText('BRUSSELS PET', {
+    drawText(page, 'BRUSSELS PET', {
       x: MARGIN, y: PAGE_HEIGHT - 38, size: 19, font: bold, color: rgb(0.12, 0.12, 0.12),
     });
-    page.drawText('CATALOGO DE PRODUTOS', {
+    drawText(page, 'CATALOGO DE PRODUTOS', {
       x: MARGIN, y: PAGE_HEIGHT - 54, size: 8, font: regular, color: rgb(0.42, 0.42, 0.42),
     });
-    page.drawText(`Pagina ${pageIndex + 1} de ${totalPages}`, {
+    drawText(page, `Pagina ${pageIndex + 1} de ${totalPages}`, {
       x: PAGE_WIDTH - MARGIN - 58, y: PAGE_HEIGHT - 42, size: 8, font: regular, color: rgb(0.42, 0.42, 0.42),
     });
 
@@ -150,7 +158,7 @@ export async function GET() {
         });
       } else {
         page.drawRectangle({ x: imageX, y: imageY, width: imageW, height: imageH, color: rgb(0.96, 0.96, 0.96) });
-        page.drawText('FOTO', { x: imageX + 31, y: imageY + imageH / 2, size: 8, font: bold, color: rgb(0.55, 0.55, 0.55) });
+        drawText(page, 'FOTO', { x: imageX + 31, y: imageY + imageH / 2, size: 8, font: bold, color: rgb(0.55, 0.55, 0.55) });
       }
 
       const textX = x + 111;
@@ -160,7 +168,7 @@ export async function GET() {
       let remaining = name;
       while (remaining.length && nameLines.length < 2) {
         let cut = remaining.length;
-        while (cut > 1 && bold.widthOfTextAtSize(remaining.slice(0, cut), 10) > textWidth) cut--;
+        while (cut > 1 && measureText(bold, remaining.slice(0, cut), 10) > textWidth) cut--;
         if (cut < remaining.length) {
           const space = remaining.lastIndexOf(' ', cut);
           if (space > 0) cut = space;
@@ -170,23 +178,23 @@ export async function GET() {
       }
       let textY = top - 24;
       for (const line of nameLines) {
-        page.drawText(line, { x: textX, y: textY, size: 10, font: bold, color: rgb(0.12, 0.12, 0.12) });
+        drawText(page, line, { x: textX, y: textY, size: 10, font: bold, color: rgb(0.12, 0.12, 0.12) });
         textY -= 13;
       }
       if (remaining) {
-        page.drawText('...', { x: textX, y: textY, size: 10, font: bold, color: rgb(0.12, 0.12, 0.12) });
+        drawText(page, '...', { x: textX, y: textY, size: 10, font: bold, color: rgb(0.12, 0.12, 0.12) });
         textY -= 13;
       }
       textY -= 5;
 
       const sku = pdfSafe(clean(product.sku) || 'Nao informado', regular);
-      page.drawText('SKU: ' + sku.slice(0, 30), {
+      drawText(page, 'SKU: ' + sku.slice(0, 30), {
         x: textX, y: textY, size: 7.5, font: regular, color: rgb(0.38, 0.38, 0.38),
       });
       textY -= 16;
 
       const minQuantity = Math.max(1, Math.floor(Number(product.min_quantity) || 1));
-      page.drawText('Qtd. minima: ' + minQuantity + ' un.', {
+      drawText(page, 'Qtd. minima: ' + minQuantity + ' un.', {
         x: textX, y: textY, size: 7.5, font: bold, color: rgb(0.3, 0.3, 0.3),
       });
       textY -= 15;
@@ -201,7 +209,7 @@ export async function GET() {
       let colorRemaining = colorText;
       while (colorRemaining.length && colorLines.length < 3) {
         let cut = colorRemaining.length;
-        while (cut > 1 && regular.widthOfTextAtSize(colorRemaining.slice(0, cut), 7.5) > textWidth) cut--;
+        while (cut > 1 && measureText(regular, colorRemaining.slice(0, cut), 7.5) > textWidth) cut--;
         if (cut < colorRemaining.length) {
           const space = colorRemaining.lastIndexOf(' ', cut);
           if (space > 0) cut = space;
@@ -209,14 +217,14 @@ export async function GET() {
         colorLines.push(colorRemaining.slice(0, cut));
         colorRemaining = colorRemaining.slice(cut).trim();
       }
-      page.drawText('Cores:', { x: textX, y: textY, size: 7.5, font: bold, color: rgb(0.3, 0.3, 0.3) });
+      drawText(page, 'Cores:', { x: textX, y: textY, size: 7.5, font: bold, color: rgb(0.3, 0.3, 0.3) });
       textY -= 11;
       for (const line of colorLines) {
-        page.drawText(line, { x: textX, y: textY, size: 7.2, font: regular, color: rgb(0.3, 0.3, 0.3) });
+        drawText(page, line, { x: textX, y: textY, size: 7.2, font: regular, color: rgb(0.3, 0.3, 0.3) });
         textY -= 10;
       }
 
-      page.drawText(pdfSafe(formatPrice(product.price)), {
+      drawText(page, pdfSafe(formatPrice(product.price)), {
         x: textX, y: y + 17, size: 11, font: bold, color: rgb(0.12, 0.12, 0.12),
       });
 
