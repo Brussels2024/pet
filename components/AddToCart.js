@@ -153,7 +153,7 @@ export default function AddToCart({ product }) {
       )}
       {error && <p className="msg error">{error}</p>}
       <button type="button" className="btn small" onClick={add}>
-        {added ? 'Adicionado ✓' : 'Adicionar'}
+        {added ? 'Adicionado ✓' : 'Comprar'}
       </button>
     </div>
   );
