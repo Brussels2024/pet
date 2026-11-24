@@ -20,29 +20,11 @@ function clean(value) {
   return String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
 }
 
-// As fontes padrão do PDF (Helvetica) usam WinAnsi. Normalizamos caracteres
-// fora desse conjunto para evitar que nomes ou cores interrompam a geração.
-function pdfSafe(value, font) {
-  let output = '';
-  for (const character of String(value ?? '')) {
-    try {
-      font.encodeText(character);
-      output += character;
-    } catch {
-      const normalized = character.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-      let replacement = '';
-      for (const candidate of normalized) {
-        try {
-          font.encodeText(candidate);
-          replacement += candidate;
-        } catch {
-          replacement += '?';
-        }
-      }
-      output += replacement || '?';
-    }
-  }
-  return output;
+function pdfSafe(value) {
+  return String(value ?? '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, '?');
 }
 
 function formatPrice(value) {
@@ -135,7 +117,7 @@ export async function GET() {
     page.drawText('CATÁLOGO DE PRODUTOS', {
       x: MARGIN, y: PAGE_HEIGHT - 54, size: 8, font: regular, color: rgb(0.42, 0.42, 0.42),
     });
-    page.drawText(`Página ${pageIndex + 1} de ${totalPages}`, {
+    page.drawText(`Pagina ${pageIndex + 1} de ${totalPages}`, {
       x: PAGE_WIDTH - MARGIN - 58, y: PAGE_HEIGHT - 42, size: 8, font: regular, color: rgb(0.42, 0.42, 0.42),
     });
 
@@ -193,19 +175,19 @@ export async function GET() {
         textY -= 13;
       }
       if (remaining) {
-        page.drawText('…', { x: textX, y: textY, size: 10, font: bold, color: rgb(0.12, 0.12, 0.12) });
+        page.drawText('...', { x: textX, y: textY, size: 10, font: bold, color: rgb(0.12, 0.12, 0.12) });
         textY -= 13;
       }
       textY -= 5;
 
-      const sku = pdfSafe(clean(product.sku) || 'Não informado', regular);
+      const sku = pdfSafe(clean(product.sku) || 'Nao informado', regular);
       page.drawText('SKU: ' + sku.slice(0, 30), {
         x: textX, y: textY, size: 7.5, font: regular, color: rgb(0.38, 0.38, 0.38),
       });
       textY -= 16;
 
       const minQuantity = Math.max(1, Math.floor(Number(product.min_quantity) || 1));
-      page.drawText('Qtd. mínima: ' + minQuantity + ' un.', {
+      page.drawText('Qtd. minima: ' + minQuantity + ' un.', {
         x: textX, y: textY, size: 7.5, font: bold, color: rgb(0.3, 0.3, 0.3),
       });
       textY -= 15;
@@ -215,7 +197,7 @@ export async function GET() {
         const raw = Array.isArray(product.colors) ? product.colors : JSON.parse(product.colors || '[]');
         colors = raw.map((color) => pdfSafe(clean(typeof color === 'string' ? color : color?.name), regular)).filter(Boolean);
       } catch { colors = []; }
-      const colorText = colors.length ? colors.join(', ') : 'Não informado';
+      const colorText = colors.length ? colors.join(', ') : 'Nao informado';
       const colorLines = [];
       let colorRemaining = colorText;
       while (colorRemaining.length && colorLines.length < 3) {
