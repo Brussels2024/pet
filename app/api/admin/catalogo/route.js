@@ -20,6 +20,31 @@ function clean(value) {
   return String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
 }
 
+// As fontes padrão do PDF (Helvetica) usam WinAnsi. Normalizamos caracteres
+// fora desse conjunto para evitar que nomes ou cores interrompam a geração.
+function pdfSafe(value, font) {
+  let output = '';
+  for (const character of String(value ?? '')) {
+    try {
+      font.encodeText(character);
+      output += character;
+    } catch {
+      const normalized = character.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+      let replacement = '';
+      for (const candidate of normalized) {
+        try {
+          font.encodeText(candidate);
+          replacement += candidate;
+        } catch {
+          replacement += '?';
+        }
+      }
+      output += replacement || '?';
+    }
+  }
+  return output;
+}
+
 function formatPrice(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
 }
@@ -149,7 +174,7 @@ export async function GET() {
 
       const textX = x + 111;
       const textWidth = CARD_WIDTH - 121;
-      const name = clean(product.name) || 'Produto';
+      const name = pdfSafe(clean(product.name) || 'Produto', bold);
       const nameLines = [];
       let remaining = name;
       while (remaining.length && nameLines.length < 2) {
@@ -173,7 +198,7 @@ export async function GET() {
       }
       textY -= 5;
 
-      const sku = clean(product.sku) || 'Não informado';
+      const sku = pdfSafe(clean(product.sku) || 'Não informado', regular);
       page.drawText('SKU: ' + sku.slice(0, 30), {
         x: textX, y: textY, size: 7.5, font: regular, color: rgb(0.38, 0.38, 0.38),
       });
@@ -188,7 +213,7 @@ export async function GET() {
       let colors = [];
       try {
         const raw = Array.isArray(product.colors) ? product.colors : JSON.parse(product.colors || '[]');
-        colors = raw.map((color) => clean(typeof color === 'string' ? color : color?.name)).filter(Boolean);
+        colors = raw.map((color) => pdfSafe(clean(typeof color === 'string' ? color : color?.name), regular)).filter(Boolean);
       } catch { colors = []; }
       const colorText = colors.length ? colors.join(', ') : 'Não informado';
       const colorLines = [];
