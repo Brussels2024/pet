@@ -44,8 +44,8 @@ export default async function ConfiguracoesPage() {
           <input id="whatsapp" name="whatsapp" defaultValue={whatsapp} inputMode="tel" />
         </div>
         <div className="field">
-          <label htmlFor="instagram">Instagram da loja (link do perfil)</label>
-          <input id="instagram" name="instagram" type="url" defaultValue={instagram} placeholder="https://www.instagram.com/seu_perfil/" />
+          <label htmlFor="instagram">Instagram da loja (@ ou link do perfil)</label>
+          <input id="instagram" name="instagram" type="text" defaultValue={instagram} placeholder="@seu_perfil ou https://instagram.com/seu_perfil" autoComplete="off" />
         </div>
         <button className="btn" type="submit">Salvar configurações</button>
       </form>
