@@ -18,6 +18,11 @@ export default async function RootLayout({ children }) {
   } catch {
     whatsapp = '';
   }
+  try {
+    instagram = await getSetting('instagram', '');
+  } catch {
+    instagram = '';
+  }
 
   return (
     <html lang="pt-BR">
@@ -30,6 +35,7 @@ export default async function RootLayout({ children }) {
             </footer>
           }
           whatsapp={whatsapp}
+          instagram={instagram}
         >
           {children}
         </StoreChrome>
