@@ -8,11 +8,15 @@ export default function BaixarCatalogoButton() {
   async function baixarCatalogo() {
     if (loading) return;
     setLoading(true);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 90000);
+
     try {
       const response = await fetch('/api/admin/catalogo', {
         method: 'GET',
         credentials: 'same-origin',
         cache: 'no-store',
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -39,8 +43,12 @@ export default function BaixarCatalogoButton() {
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (error) {
-      window.alert(error?.message || 'Erro ao baixar o catálogo PDF.');
+      const message = error?.name === 'AbortError'
+        ? 'A geração do catálogo demorou demais. Tente novamente; o sistema encerrou a solicitação para não deixar o botão travado.'
+        : (error?.message || 'Erro ao baixar o catálogo PDF.');
+      window.alert(message);
     } finally {
+      window.clearTimeout(timeout);
       setLoading(false);
     }
   }
