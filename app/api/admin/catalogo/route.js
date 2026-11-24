@@ -43,35 +43,34 @@ async function embedProductImage(pdf, imageUrl) {
   if (!imageUrl) return null;
   try {
     let bytes;
-    let type = '';
     if (/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(imageUrl)) {
       const match = imageUrl.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/i);
       if (!match) return null;
       bytes = Buffer.from(match[2], 'base64');
-      type = match[1].toLowerCase();
     } else if (/^https:\/\//i.test(imageUrl)) {
-      const response = await fetch(imageUrl, { signal: AbortSignal.timeout(7000) });
+      const response = await fetch(imageUrl, { signal: AbortSignal.timeout(5000) });
       if (!response.ok) return null;
-      type = (response.headers.get('content-type') || '').toLowerCase();
-      if (!type.includes('image/png') && !type.includes('image/jpeg') && !type.includes('image/webp')) return null;
+      const type = (response.headers.get('content-type') || '').toLowerCase();
+      if (!type.startsWith('image/')) return null;
       const length = Number(response.headers.get('content-length') || 0);
-      if (length > 5 * 1024 * 1024) return null;
+      if (length > 8 * 1024 * 1024) return null;
       bytes = Buffer.from(await response.arrayBuffer());
-      if (bytes.length > 5 * 1024 * 1024) return null;
     } else {
       return null;
     }
-    if (bytes.length > 5 * 1024 * 1024) return null;
-    if (type.includes('webp')) {
-      bytes = await sharp(bytes).png().toBuffer();
-      type = 'image/png';
-    }
-    return type.includes('png') ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+    if (!bytes.length || bytes.length > 8 * 1024 * 1024) return null;
+
+    // Padroniza as fotos em JPEG pequeno para evitar PDFs gigantes e estouro de memória.
+    const optimized = await sharp(bytes, { limitInputPixels: 40000000 })
+      .rotate()
+      .resize(420, 420, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 62, mozjpeg: true })
+      .toBuffer();
+    return await pdf.embedJpg(optimized);
   } catch {
     return null;
   }
 }
-
 function addProductLink(page, pdf, x, y, width, height, url) {
   const context = pdf.context;
   const annotation = context.obj({
@@ -114,7 +113,7 @@ export async function GET() {
     page.drawText('BRUSSELS PET', {
       x: MARGIN, y: PAGE_HEIGHT - 38, size: 19, font: bold, color: rgb(0.12, 0.12, 0.12),
     });
-    page.drawText('CATÁLOGO DE PRODUTOS', {
+    page.drawText('CATALOGO DE PRODUTOS', {
       x: MARGIN, y: PAGE_HEIGHT - 54, size: 8, font: regular, color: rgb(0.42, 0.42, 0.42),
     });
     page.drawText(`Pagina ${pageIndex + 1} de ${totalPages}`, {
@@ -217,7 +216,7 @@ export async function GET() {
         textY -= 10;
       }
 
-      page.drawText(formatPrice(product.price), {
+      page.drawText(pdfSafe(formatPrice(product.price)), {
         x: textX, y: y + 17, size: 11, font: bold, color: rgb(0.12, 0.12, 0.12),
       });
 
