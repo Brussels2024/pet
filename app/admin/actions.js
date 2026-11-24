@@ -125,6 +125,8 @@ export async function saveProduct(formData) {
   }
 
   if (!productId) throw new Error('Não foi possível salvar o produto.');
+  const minQuantity = Math.max(1, Math.floor(num(formData, 'min_quantity') || 1));
+  await query('UPDATE products SET min_quantity = $1 WHERE id = $2', [minQuantity, productId]);
   await query('DELETE FROM product_categories WHERE product_id = $1', [productId]);
   for (const categoryId of categoryIds) {
     await query('INSERT INTO product_categories (product_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [productId, categoryId]);
