@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({ children }) {
   let whatsapp = '';
+  let instagram = '';
   try {
     whatsapp = (await getSetting('whatsapp', '')).replace(/\D/g, '');
   } catch {
