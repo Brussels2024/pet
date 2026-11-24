@@ -81,7 +81,7 @@ export async function GET() {
   await requireAdmin();
 
   const products = await query(
-    `SELECT p.id, p.name, p.sku, p.price, p.image_url, p.colors,
+    `SELECT p.id, p.name, p.sku, p.price, p.min_quantity, p.image_url, p.colors,
             (SELECT pi.image_url FROM product_images pi
               WHERE pi.product_id = p.id ORDER BY pi.position ASC LIMIT 1) AS first_image
        FROM products p
@@ -96,7 +96,7 @@ export async function GET() {
   const pdf = await PDFDocument.create();
   pdf.setTitle('Catálogo Brussels Pet');
   pdf.setAuthor('Brussels Pet');
-  pdf.setSubject('Catálogo de produtos, SKUs, cores e preços');
+  pdf.setSubject('Catálogo de produtos, SKUs, quantidade mínima, cores e preços');
   pdf.setCreator('Brussels Pet');
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -178,6 +178,12 @@ export async function GET() {
         x: textX, y: textY, size: 7.5, font: regular, color: rgb(0.38, 0.38, 0.38),
       });
       textY -= 16;
+
+      const minQuantity = Math.max(1, Math.floor(Number(product.min_quantity) || 1));
+      page.drawText('Qtd. mínima: ' + minQuantity + ' un.', {
+        x: textX, y: textY, size: 7.5, font: bold, color: rgb(0.3, 0.3, 0.3),
+      });
+      textY -= 15;
 
       let colors = [];
       try {
