@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, PDFName, PDFString, rgb } from 'pdf-lib';
+import sharp from 'sharp';
 import { query } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 
@@ -45,7 +46,7 @@ async function embedProductImage(pdf, imageUrl) {
       const response = await fetch(imageUrl, { signal: AbortSignal.timeout(7000) });
       if (!response.ok) return null;
       type = (response.headers.get('content-type') || '').toLowerCase();
-      if (!type.includes('image/png') && !type.includes('image/jpeg')) return null;
+      if (!type.includes('image/png') && !type.includes('image/jpeg') && !type.includes('image/webp')) return null;
       const length = Number(response.headers.get('content-length') || 0);
       if (length > 5 * 1024 * 1024) return null;
       bytes = Buffer.from(await response.arrayBuffer());
@@ -54,7 +55,7 @@ async function embedProductImage(pdf, imageUrl) {
       return null;
     }
     if (bytes.length > 5 * 1024 * 1024) return null;
-    return type.includes('png') ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+    if (type.includes('webp')) {\n      bytes = await sharp(bytes).png().toBuffer();\n      type = 'image/png';\n    }\n    return type.includes('png') ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
   } catch {
     return null;
   }
@@ -67,7 +68,7 @@ function addProductLink(page, pdf, x, y, width, height, url) {
     Subtype: 'Link',
     Rect: [x, y, x + width, y + height],
     Border: [0, 0, 0],
-    A: { Type: 'Action', S: 'URI', URI: url },
+    A: { Type: PDFName.of('Action'), S: PDFName.of('URI'), URI: PDFString.of(url) },
   });
   page.node.addAnnot(context.register(annotation));
 }
