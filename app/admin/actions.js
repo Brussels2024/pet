@@ -263,9 +263,16 @@ export async function saveSettings(formData) {
   await requireAdmin();
   const minOrder = Math.max(0, num(formData, 'min_order')).toFixed(2);
   const whatsapp = text(formData, 'whatsapp').replace(/\D/g, '');
-  const instagram = text(formData, 'instagram').slice(0, 300);
-  if (instagram && !/^https?:\/\/(www\.)?instagram\.com\/[A-Za-z0-9._]+\/?$/i.test(instagram)) {
-    throw new Error('Informe um link válido do Instagram.');
+  const instagramInput = text(formData, 'instagram').slice(0, 300);
+  let instagram = '';
+  if (instagramInput) {
+    const handleMatch = instagramInput.match(/^@?([A-Za-z0-9._]{1,30})$/);
+    const urlMatch = instagramInput.match(/^https?:\/\/(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})\/?(?:\?.*)?$/i);
+    const handle = handleMatch?.[1] || urlMatch?.[1] || '';
+    if (!handle || handle === '.' || handle === '..') {
+      throw new Error('Informe o @ do Instagram ou o link válido do perfil.');
+    }
+    instagram = 'https://www.instagram.com/' + handle + '/';
   }
   await query(
     `INSERT INTO settings (key, value) VALUES ('min_order', $1)
