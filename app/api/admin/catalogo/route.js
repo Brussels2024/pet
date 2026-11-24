@@ -28,7 +28,7 @@ function pdfSafe(value) {
 }
 
 function drawText(page, value, options) {
-  drawText(page, pdfSafe(value), options);
+  page.drawText(pdfSafe(value), options);
 }
 
 function measureText(font, value, size) {
