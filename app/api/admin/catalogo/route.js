@@ -37,8 +37,8 @@ async function embedProductImage(pdf, imageUrl) {
   try {
     let bytes;
     let type = '';
-    if (/^data:image\/(png|jpeg|jpg);base64,/i.test(imageUrl)) {
-      const match = imageUrl.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/i);
+    if (/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(imageUrl)) {
+      const match = imageUrl.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/i);
       if (!match) return null;
       bytes = Buffer.from(match[2], 'base64');
       type = match[1].toLowerCase();
@@ -55,7 +55,11 @@ async function embedProductImage(pdf, imageUrl) {
       return null;
     }
     if (bytes.length > 5 * 1024 * 1024) return null;
-    if (type.includes('webp')) {\n      bytes = await sharp(bytes).png().toBuffer();\n      type = 'image/png';\n    }\n    return type.includes('png') ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+    if (type.includes('webp')) {
+      bytes = await sharp(bytes).png().toBuffer();
+      type = 'image/png';
+    }
+    return type.includes('png') ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
   } catch {
     return null;
   }
@@ -64,8 +68,8 @@ async function embedProductImage(pdf, imageUrl) {
 function addProductLink(page, pdf, x, y, width, height, url) {
   const context = pdf.context;
   const annotation = context.obj({
-    Type: 'Annot',
-    Subtype: 'Link',
+    Type: PDFName.of('Annot'),
+    Subtype: PDFName.of('Link'),
     Rect: [x, y, x + width, y + height],
     Border: [0, 0, 0],
     A: { Type: PDFName.of('Action'), S: PDFName.of('URI'), URI: PDFString.of(url) },
