@@ -458,3 +458,13 @@ body:has(.admin-nav) .site-footer { display: none; }
 .variant-custom-color { margin-top: 8px; }
 .variant-custom-color summary { cursor: pointer; color: #777; font-size: 13px; }
 .variant-custom-color input { margin-top: 8px; width: 100%; }
+
+
+/* Atalhos sociais flutuantes da loja */
+.social-float { position: fixed; right: 18px; bottom: 18px; z-index: 40; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.social-float-link { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.22); font-size: 0; }
+.social-float-link:hover { transform: translateY(-2px); text-decoration: none; }
+.social-float-link svg { width: 25px; height: 25px; }
+.social-instagram { background: radial-gradient(circle at 30% 110%, #feda75 0 12%, #fa7e1e 35%, #d62976 62%, #962fbf 82%, #4f5bd5 100%); }
+.social-whatsapp { background: #25d366; }
+@media (max-width: 640px) { .social-float { right: 12px; bottom: 12px; } .social-float-link { width: 44px; height: 44px; } }
