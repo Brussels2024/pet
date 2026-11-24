@@ -116,7 +116,7 @@ export default function CartClient({ minOrder, status }) {
           Total: <b>{brl(total)}</b>
         </p>
         <p className="muted" style={{ marginTop: 0 }}>
-          Pedido mínimo: {brl(minOrder)}. O frete é combinado após a confirmação do pedido.
+          Pedido mínimo: {brl(minOrder)}. Frete grátis.
         </p>
         {belowMin && (
           <div className="msg warn">
