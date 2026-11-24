@@ -12,8 +12,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({ children }) {
   let whatsapp = '';
+  let instagram = 'https://www.instagram.com/almapet2024/';
   try {
     whatsapp = (await getSetting('whatsapp', '')).replace(/\D/g, '');
+    instagram = await getSetting('instagram', instagram);
   } catch {
     whatsapp = '';
   }
@@ -29,6 +31,7 @@ export default async function RootLayout({ children }) {
             </footer>
           }
           whatsapp={whatsapp}
+          instagram={instagram}
         >
           {children}
         </StoreChrome>
