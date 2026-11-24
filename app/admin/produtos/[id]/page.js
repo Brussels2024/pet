@@ -18,6 +18,7 @@ export default async function ProdutoFormPage({ params }) {
     sku: '',
     price: '',
     stock: 0,
+    min_quantity: 1,
     image_url: '',
     category_id: '',
     active: true,
@@ -91,6 +92,11 @@ export default async function ProdutoFormPage({ params }) {
             <label htmlFor="stock">Estoque</label>
             <input id="stock" name="stock" type="number" min="0" defaultValue={product.stock} required />
           </div>
+        </div>
+        <div className="field">
+          <label htmlFor="min_quantity">Quantidade mínima para compra</label>
+          <input id="min_quantity" name="min_quantity" type="number" min="1" step="1" defaultValue={Math.max(1, Number(product.min_quantity) || 1)} required />
+          <p className="muted">O cliente deverá comprar pelo menos essa quantidade deste produto.</p>
         </div>
         <div className="field">
           <label>Fotos do produto (até 6)</label>
