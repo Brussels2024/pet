@@ -31,7 +31,7 @@ export default async function ProdutosPage({ searchParams }) {
       <h1>Produtos e estoque</h1>
       <div className="inline-form" style={{ marginBottom: 16 }}>
         <Link className="btn" href="/admin/produtos/novo">Novo produto</Link>
-        <a className="btn outline" href="/api/admin/catalogo" target="_blank" rel="noopener noreferrer">Baixar catálogo PDF</a>
+        <a className="btn outline" href="/api/admin/catalogo" download="catalogo-brussels-pet.pdf">Baixar catálogo PDF</a>
         <Link className="btn outline" href="/admin/importar-catalogo">Importar catálogo ZIP</Link>
         <Link className="btn outline" href="/admin/importar-sku-precos">Importar catálogo da tabela</Link>
         <form action="/admin/produtos" method="get" className="inline-form">
