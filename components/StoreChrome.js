@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 
-export default function StoreChrome({ children, header, footer, whatsapp }) {
+export default function StoreChrome({ children, header, footer, whatsapp, instagram }) {
   const pathname = usePathname() || '';
   const isAdminArea =
     pathname === '/admin' ||
@@ -24,8 +24,20 @@ export default function StoreChrome({ children, header, footer, whatsapp }) {
           href={`https://wa.me/${whatsapp}`}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label="Fale com a Brussels Pet pelo WhatsApp"
         >
           WhatsApp
+        </a>
+      )}
+      {instagram && (
+        <a
+          className="whats instagram-social"
+          href={instagram}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Acesse o Instagram da Brussels Pet"
+        >
+          Instagram
         </a>
       )}
     </>
