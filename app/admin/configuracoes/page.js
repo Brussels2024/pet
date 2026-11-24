@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export default async function ConfiguracoesPage() {
   const minOrder = await getSetting('min_order', '300');
   const whatsapp = await getSetting('whatsapp', '');
+  const instagram = await getSetting('instagram', '');
 
   return (
     <>
@@ -41,6 +42,10 @@ export default async function ConfiguracoesPage() {
         <div className="field">
           <label htmlFor="whatsapp">WhatsApp de atendimento (com DDD, ex.: 11999998888)</label>
           <input id="whatsapp" name="whatsapp" defaultValue={whatsapp} inputMode="tel" />
+        </div>
+        <div className="field">
+          <label htmlFor="instagram">Instagram da loja (link do perfil)</label>
+          <input id="instagram" name="instagram" type="url" defaultValue={instagram} placeholder="https://www.instagram.com/seu_perfil/" />
         </div>
         <button className="btn" type="submit">Salvar configurações</button>
       </form>
